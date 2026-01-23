@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 
 import { loadBookings, saveBookings } from '@/features/reservas/data/bookings.repo';
+import { addMinutes, roundToNext15Min } from '@/features/reservas/domain/bookingWindow';
 import type { Booking, Space } from '@/features/reservas/domain/reservas.types';
 import { loadWorkspaceConfig } from '@/features/space-builder/data/workspaceConfig.repo';
 import type { WorkspaceConfig } from '@/features/space-builder/domain/spaceBuilder.types';
@@ -21,6 +22,13 @@ export interface ReservasState {
   spaces: Space[];
   bookings: Booking[];
   selectedSpaceId: string | null;
+  bookingStartISO: string;
+  durationMinutes: number;
+
+  setBookingStartISO: (iso: string) => void;
+  setDurationMinutes: (min: number) => void;
+  cancelBooking: (bookingId: string) => Promise<void>;
+  isSpaceOccupied: (spaceId: string) => boolean;
 
   hydrate: () => Promise<void>;
   selectSpace: (spaceId: string) => void;
@@ -52,6 +60,8 @@ export const useReservasStore = create<ReservasState>((set, get) => ({
   spaces: [],
   bookings: [],
   selectedSpaceId: null,
+  bookingStartISO: roundToNext15Min(new Date()).toISOString(),
+  durationMinutes: 60,
 
   hydrate: async () => {
     set({ status: 'loading' });
@@ -75,13 +85,29 @@ export const useReservasStore = create<ReservasState>((set, get) => ({
 
   selectSpace: (spaceId) => set({ selectedSpaceId: spaceId }),
 
-      createMockBooking: async (userId) => {
-    const { selectedSpaceId, bookings } = get();
+  setBookingStartISO: (iso) => set({ bookingStartISO: iso }),
+
+  setDurationMinutes: (min) => set({ durationMinutes: min }),
+
+  cancelBooking: async (bookingId) => {
+    const { bookings } = get();
+    const updated = bookings.filter((b) => b.id !== bookingId);
+    await saveBookings(updated);
+    set({ bookings: updated });
+  },
+
+  isSpaceOccupied: (spaceId) => {
+    const { bookings, bookingStartISO, durationMinutes } = get();
+    const endISO = addMinutes(bookingStartISO, durationMinutes);
+    return !canBook(spaceId, bookingStartISO, endISO, bookings);
+  },
+
+  createMockBooking: async (userId) => {
+    const { selectedSpaceId, bookings, bookingStartISO, durationMinutes } = get();
     if (!selectedSpaceId) return;
 
-    const now = new Date();
-    const startISO = now.toISOString();
-    const endISO = new Date(now.getTime() + 60 * 60 * 1000).toISOString();
+    const startISO = bookingStartISO;
+    const endISO = addMinutes(startISO, durationMinutes);
 
     if (!canBook(selectedSpaceId, startISO, endISO, bookings)) return;
 
@@ -97,6 +123,4 @@ export const useReservasStore = create<ReservasState>((set, get) => ({
     await saveBookings(updated);
     set({ bookings: updated });
   },
-
-
 }));
