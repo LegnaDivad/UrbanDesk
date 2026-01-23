@@ -9,6 +9,7 @@ export default function SpaceBuilderIndex() {
   const hydrate = useSpaceBuilderStore((s) => s.hydrate);
   const persist = useSpaceBuilderStore((s) => s.persist);
   const isDirty = useSpaceBuilderStore((s) => s.isDirty);
+  const seedDefault = useSpaceBuilderStore((s) => s.seedDefault);
 
   useEffect(() => {
     void hydrate();
@@ -27,6 +28,15 @@ export default function SpaceBuilderIndex() {
         }}
         disabled={!isDirty || !config}
       >
+        <Pressable
+        className="rounded-xl bg-black px-4 py-3"
+        onPress={() => {
+            seedDefault();
+        }}
+        >
+        <Text className="text-white text-center">Crear config default</Text>
+        </Pressable>
+
         <Text className="text-white text-center">
           Guardar (disabled si no hay cambios)
         </Text>

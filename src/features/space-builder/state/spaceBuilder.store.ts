@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 
 import { loadWorkspaceConfig, saveWorkspaceConfig } from '@/features/space-builder/data/workspaceConfig.repo';
+import { createDefaultWorkspaceConfig } from '@/features/space-builder/domain/defaultConfig';
 import type { WorkspaceConfig } from '@/features/space-builder/domain/spaceBuilder.types';
 
 interface SpaceBuilderState {
@@ -11,6 +12,7 @@ interface SpaceBuilderState {
   hydrate: () => Promise<void>;
   setConfig: (config: WorkspaceConfig) => void;
   persist: () => Promise<void>;
+  seedDefault: () => void;
 }
 
 export const useSpaceBuilderStore = create<SpaceBuilderState>((set, get) => ({
@@ -35,5 +37,10 @@ export const useSpaceBuilderStore = create<SpaceBuilderState>((set, get) => ({
     if (!config) return;
     await saveWorkspaceConfig(config);
     set({ isDirty: false });
+  },
+
+  seedDefault: () => {
+    const config = createDefaultWorkspaceConfig();
+    set({ config, isDirty: true });
   },
 }));

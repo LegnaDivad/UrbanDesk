@@ -82,3 +82,26 @@ Checklist Universal
 
  Móvil: iOS/Android renderiza sin crashes
 
+## Foundations: Inventario
+Inventario uses a feature-level Zustand store backed by local persistence (KV):
+- Web: localStorage
+- Native: SecureStore
+
+This is a temporary foundation that will be swapped to API-backed repositories later without changing UI wiring.
+Checklist
+
+ TypeScript OK
+
+ Web OK
+
+ Móvil OK
+
+ ## Dev Utilities
+A `/logout` route is available during development to clear the persisted session and return to `/login`.
+Checklist Universal
+ TypeScript: npm run typecheck
+
+ Web: /login no redirige si estás signedOut; /logout limpia sesión
+
+ Móvil: /logout limpia sesión y vuelve a /login
+
