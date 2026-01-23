@@ -7,12 +7,3 @@ export interface InventoryItem {
   serial?: string;
 }
 
-export interface InventoryTransaction {
-  id: string;
-  itemId: string;
-  userId: string;
-  kind: 'loan' | 'rent';
-  startISO: string;
-  endISO?: string;
-}
-

@@ -68,3 +68,17 @@ Checklist Universal
  Web responsiva: / (app)/reservas renderiza estado sin errores
 
  Móvil: iOS/Android renderiza sin crashes
+
+ ## Foundations: Workspace Config
+Space Builder persists a `WorkspaceConfig` locally to enable dynamic spaces:
+- Web: `localStorage`
+- Native: `expo-secure-store`
+
+Reservas hydrates and consumes the same `WorkspaceConfig` as the initial step toward dynamic booking flows.
+Checklist Universal
+ TypeScript: npm run typecheck sin errores
+
+ Web responsiva: user/admin routes renderizan estado sin crashes
+
+ Móvil: iOS/Android renderiza sin crashes
+
