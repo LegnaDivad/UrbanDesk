@@ -27,6 +27,25 @@ export interface ReservasState {
   createMockBooking: (userId: string) => Promise<void>;
 }
 
+function overlaps(aStart: string, aEnd: string, bStart: string, bEnd: string): boolean {
+  const aS = new Date(aStart).getTime();
+  const aE = new Date(aEnd).getTime();
+  const bS = new Date(bStart).getTime();
+  const bE = new Date(bEnd).getTime();
+  return aS < bE && bS < aE;
+}
+
+function canBook(
+  spaceId: string,
+  startISO: string,
+  endISO: string,
+  bookings: Booking[],
+): boolean {
+  return !bookings.some(
+    (b) => b.spaceId === spaceId && overlaps(startISO, endISO, b.startISO, b.endISO),
+  );
+}
+
 export const useReservasStore = create<ReservasState>((set, get) => ({
   status: 'idle',
   config: null,
@@ -37,7 +56,10 @@ export const useReservasStore = create<ReservasState>((set, get) => ({
   hydrate: async () => {
     set({ status: 'loading' });
     try {
-      const [config, bookings] = await Promise.all([loadWorkspaceConfig(), loadBookings()]);
+      const [config, bookings] = await Promise.all([
+        loadWorkspaceConfig(),
+        loadBookings(),
+      ]);
       const spaces = spacesFromConfig(config);
       set({
         status: 'ready',
@@ -53,13 +75,15 @@ export const useReservasStore = create<ReservasState>((set, get) => ({
 
   selectSpace: (spaceId) => set({ selectedSpaceId: spaceId }),
 
-  createMockBooking: async (userId) => {
+      createMockBooking: async (userId) => {
     const { selectedSpaceId, bookings } = get();
     if (!selectedSpaceId) return;
 
     const now = new Date();
     const startISO = now.toISOString();
     const endISO = new Date(now.getTime() + 60 * 60 * 1000).toISOString();
+
+    if (!canBook(selectedSpaceId, startISO, endISO, bookings)) return;
 
     const next: Booking = {
       id: `bk-${Date.now()}`,
@@ -73,4 +97,6 @@ export const useReservasStore = create<ReservasState>((set, get) => ({
     await saveBookings(updated);
     set({ bookings: updated });
   },
+
+
 }));
