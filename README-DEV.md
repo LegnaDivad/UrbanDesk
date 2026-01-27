@@ -194,3 +194,13 @@ Checklist Universal
  Web: /reservas carga y lista espacios
 
  Mobile: iOS/Android entra a Reservas sin error
+
+ ### Chore
+- Standardized DI module location and imports.
+- Fixed Expo Router root configuration to prevent non-route files being treated as routes.
+Checklist Universal
+ TypeScript: npm run typecheck
+
+ Web: / y /reservas cargan (sin “Route missing default export”)
+
+ Mobile: navega a Reservas y Space Builder sin crashes
