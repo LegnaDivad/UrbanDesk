@@ -185,3 +185,12 @@ Checklist universal
  Web responsiva: abre / y rutas base en http://localhost:8081
 
  Móvil: iOS + Android abren sin warnings bloqueantes
+
+ ### Fixes
+- Reservas store now loads workspace configuration from `di.spaces.workspaceRepo` (correct DI boundary).
+Checklist Universal
+ TypeScript: npm run typecheck
+
+ Web: /reservas carga y lista espacios
+
+ Mobile: iOS/Android entra a Reservas sin error

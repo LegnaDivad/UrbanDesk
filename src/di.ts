@@ -3,14 +3,9 @@ import { bookingRepoLocal } from '@/features/reservas/data/booking.repo.local';
 import { workspaceRepoLocal } from '@/features/spaces/data/workspace.repo.local';
 
 export const di = {
-  auth: {
-    sessionRepo: sessionRepoLocal,
-  },
-  spaces: {
-    workspaceRepo: workspaceRepoLocal,
-  },
-  reservas: {
-    bookingRepo: bookingRepoLocal,
-    workspaceRepo: workspaceRepoLocal, // alias intencional
-  },
+  auth: { sessionRepo: sessionRepoLocal },
+  spaces: { workspaceRepo: workspaceRepoLocal },
+  reservas: { bookingRepo: bookingRepoLocal },
+  inventory: { /* futuro */ },
 };
+

@@ -52,9 +52,10 @@ export const useReservasStore = create<ReservasState>((set, get) => ({
     set({ status: 'loading' });
     try {
       const [config, bookings] = await Promise.all([
-        di.reservas.workspaceRepo.load(),
-        di.reservas.bookingRepo.load(),
-      ]);
+      di.spaces.workspaceRepo.load(),
+      di.reservas.bookingRepo.load(),
+    ]);
+
 
       const spaces = spacesFromConfig(config);
       set({

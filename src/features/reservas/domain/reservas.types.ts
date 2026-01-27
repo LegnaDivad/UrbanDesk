@@ -1,4 +1,4 @@
-export type SpaceType = 'desk' | 'room' | 'common';
+import type { SpaceType } from '@/features/spaces/domain/workspace.types';
 
 export interface Space {
   id: string;
@@ -6,6 +6,7 @@ export interface Space {
   type: SpaceType;
   areaId: string;
 }
+
 
 export interface Booking {
   id: string;
