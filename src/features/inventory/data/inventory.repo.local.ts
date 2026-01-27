@@ -15,7 +15,7 @@ export const inventoryRepoLocal: InventoryRepo = {
 
   async loadLoans() {
     return (await kv.getJson<Loan[]>(LOANS_KEY)) ?? [];
-  },
+  }, 
   async saveLoans(next) {
     await kv.setJson(LOANS_KEY, next);
   },

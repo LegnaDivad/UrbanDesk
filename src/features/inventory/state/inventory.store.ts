@@ -84,8 +84,12 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
       },
     ];
 
-    await di.inventory.inventoryRepo.saveAssets(seed);
-    set({ assets: seed });
+    await Promise.all([
+      di.inventory.inventoryRepo.saveAssets(seed),
+      di.inventory.inventoryRepo.saveLoans([]),
+    ]);
+
+    set({ assets: seed, loans: [] });
   },
 
   addMockAsset: async () => {
