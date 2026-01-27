@@ -12,6 +12,7 @@ interface InventoryState {
 
   hydrate: () => Promise<void>;
 
+  seedMockAssets: () => Promise<void>;
   addMockAsset: () => Promise<void>;
   createMockLoan: (userId: string) => Promise<void>;
   returnLoan: (loanId: string) => Promise<void>;
@@ -22,6 +23,38 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
   assets: [],
   loans: [],
 
+  seedMockAssets: async () => {
+    const { assets } = get();
+    if (assets.length > 0) return;
+
+    const seed: Asset[] = [
+      {
+        id: 'as-seed-1',
+        name: 'Monitor 24" #1',
+        category: 'Monitor',
+        status: 'available',
+        tags: ['MVP'],
+      },
+      {
+        id: 'as-seed-2',
+        name: 'Laptop Stand #1',
+        category: 'Soporte',
+        status: 'available',
+        tags: ['MVP'],
+      },
+      {
+        id: 'as-seed-3',
+        name: 'HDMI Cable #1',
+        category: 'Cable',
+        status: 'available',
+        tags: ['MVP'],
+      },
+    ];
+
+    await di.inventory.inventoryRepo.saveAssets(seed);
+    set({ assets: seed });
+  },
+
   hydrate: async () => {
     set({ status: 'loading' });
     try {
@@ -29,6 +62,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
         di.inventory.inventoryRepo.loadAssets(),
         di.inventory.inventoryRepo.loadLoans(),
       ]);
+
       set({ status: 'ready', assets, loans });
     } catch {
       set({ status: 'error' });
@@ -37,6 +71,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
 
   addMockAsset: async () => {
     const { assets } = get();
+
     const next: Asset = {
       id: `as-${Date.now()}`,
       name: `Monitor ${assets.length + 1}`,
@@ -45,7 +80,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
       tags: ['MVP'],
     };
 
-    const updated = [next, ...assets];
+    const updated: Asset[] = [next, ...assets];
     await di.inventory.inventoryRepo.saveAssets(updated);
     set({ assets: updated });
   },
@@ -55,12 +90,13 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     const candidate = assets.find((a) => a.status === 'available');
     if (!candidate) return;
 
-    const now = new Date().toISOString();
+    const nowISO = new Date().toISOString();
+
     const loan: Loan = {
       id: `ln-${Date.now()}`,
       assetId: candidate.id,
       userId,
-      startISO: now,
+      startISO: nowISO,
       endISO: null,
       status: 'active',
     };
@@ -68,7 +104,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     const updatedLoans: Loan[] = [loan, ...loans];
 
     const updatedAssets: Asset[] = assets.map((a) =>
-      a.id === candidate.id ? { ...a, status: 'loaned' as const } : a,
+      a.id === candidate.id ? { ...a, status: 'loaned' } : a,
     );
 
     await Promise.all([
@@ -84,14 +120,14 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     const loan = loans.find((l) => l.id === loanId);
     if (!loan || loan.status !== 'active') return;
 
-    const ended = new Date().toISOString();
+    const endedISO = new Date().toISOString();
 
     const updatedLoans: Loan[] = loans.map((l) =>
-      l.id === loanId ? { ...l, status: 'returned' as const, endISO: ended } : l,
+      l.id === loanId ? { ...l, status: 'returned', endISO: endedISO } : l,
     );
 
     const updatedAssets: Asset[] = assets.map((a) =>
-      a.id === loan.assetId ? { ...a, status: 'available' as const } : a,
+      a.id === loan.assetId ? { ...a, status: 'available' } : a,
     );
 
     await Promise.all([

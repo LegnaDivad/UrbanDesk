@@ -214,3 +214,26 @@ Checklist Universal
  Web: /inventory carga y permite mock asset/loan/return
 
  Mobile: /inventory abre y funciona igual
+
+ ### Inventory (MVP)
+
+- Added `seedMockAssets` action to preload sample assets.
+- Inventory screen now uses the store API consistently for seeding.
+Checklist Universal (3)
+TypeScript: npm run typecheck sin errores.
+
+Web Responsiva: abre /inventory y confirma render + botones.
+
+Móvil: corre en Expo Go y valida que Seed mock assets actualiza la lista.
+
+### Inventory
+
+- Fixed `kv` helper to export a single implementation with `getJson/setJson`.
+- Repaired inventory store parsing and completed `hydrate()` using `loadAssets/loadLoans`.
+- Added `seedMockAssets()` for deterministic MVP data.
+Checklist Universal
+TypeScript: npm run typecheck ✅
+
+Web: /inventory carga + seed persiste tras refresh ✅
+
+Móvil: seed + préstamo + return persiste tras reload ✅

@@ -9,7 +9,6 @@ export const inventoryRepoLocal: InventoryRepo = {
   async loadAssets() {
     return (await kv.getJson<Asset[]>(ASSETS_KEY)) ?? [];
   },
-
   async saveAssets(next) {
     await kv.setJson(ASSETS_KEY, next);
   },
@@ -17,7 +16,6 @@ export const inventoryRepoLocal: InventoryRepo = {
   async loadLoans() {
     return (await kv.getJson<Loan[]>(LOANS_KEY)) ?? [];
   },
-
   async saveLoans(next) {
     await kv.setJson(LOANS_KEY, next);
   },
