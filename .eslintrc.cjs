@@ -14,5 +14,10 @@ module.exports = {
     "simple-import-sort/exports": "error",
     "react-hooks/rules-of-hooks": "error",
     "react-hooks/exhaustive-deps": "warn"
-  }
+  },
+  settings: {
+  "import/resolver": {
+    typescript: { project: "./tsconfig.json" },
+  },
+},
 };

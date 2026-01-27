@@ -162,3 +162,26 @@ Checklist Universal
  Web OK
 
  Móvil OK
+
+ ## Routing (Expo Router) y Router Root
+
+- Se usa **Expo Router** con navegación basada en archivos bajo `app/`.
+- Evitar colocar archivos no-route dentro de `app/` (por ejemplo `di.ts`), ya que Expo Router intenta interpretarlos como pantallas y puede causar **Unmatched Route**.
+- La inyección de dependencias (DI) vive fuera del router root:
+  - `src/di.ts`
+  - Imports: `@/di`
+
+### Run (Web/Mobile)
+- Web: `npm run web`
+- iOS: `npm run ios`
+- Android: `npm run android`
+
+### Tooling
+- Aligned Expo patch versions to the expected SDK-compatible releases.
+- Added `eslint-import-resolver-typescript` to correctly resolve TS path aliases (`@/*`) in ESLint.
+Checklist universal
+ TypeScript: npm run typecheck
+
+ Web responsiva: abre / y rutas base en http://localhost:8081
+
+ Móvil: iOS + Android abren sin warnings bloqueantes
