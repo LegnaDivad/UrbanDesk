@@ -284,3 +284,10 @@ Web ok
 
 Móvil ok
 
+### Inventory (MVP)
+
+- Added category/status filters for assets.
+- Display active loan details per asset when loaned.
+- Added quick actions to seed mock assets, create a mock loan, and return the latest active loan.
+
+
