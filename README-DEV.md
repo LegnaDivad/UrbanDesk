@@ -195,12 +195,22 @@ Checklist Universal
 
  Mobile: iOS/Android entra a Reservas sin error
 
- ### Chore
-- Standardized DI module location and imports.
-- Fixed Expo Router root configuration to prevent non-route files being treated as routes.
+### Chore
+- Standardized DI module location to `src/di.ts` and unified imports to `@/di`.
+- Pinned Expo Router root to `app/` to prevent non-route files from being treated as routes.
+- Confirmed lint, typecheck, and web bundling green.
 Checklist Universal
  TypeScript: npm run typecheck
 
- Web: / y /reservas cargan (sin “Route missing default export”)
+ Web responsiva: carga en http://localhost:8081
 
- Mobile: navega a Reservas y Space Builder sin crashes
+ Mobile: (pendiente de confirmación rápida cuando corras iOS/Android, pero ya no hay señales de router/DI roto)
+
+ ### Fixes
+- Fixed TypeScript literal widening in Inventory store by explicitly typing mapped arrays and preserving union literal statuses.
+Checklist Universal
+ TypeScript: npm run typecheck
+
+ Web: /inventory carga y permite mock asset/loan/return
+
+ Mobile: /inventory abre y funciona igual
