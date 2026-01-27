@@ -249,3 +249,16 @@ TypeScript: npm run typecheck ✅
 Web responsiva: /login → login, signed-in → /reservas, tabs funcional ✅
 
 Móvil: misma navegación y redirects en iOS/Android ✅
+
+### Space Builder (Admin MVP)
+
+- Added `/ (admin) /space-builder` MVP screen to seed, minimally edit, and persist `WorkspaceConfig` (areas/services/spaces).
+- Reservas can navigate to Space Builder when user role is `admin`.
+- Configuration persists via `di.spaces.workspaceRepo` and is shared across modules.
+Checklist Universal
+TypeScript: npm run typecheck ✅
+
+Web: abrir /reservas → ir a Space Builder (admin) → seed → guardar → refrescar y persistencia ✅
+
+Móvil: mismas rutas, sin prompts web-only, sin APIs exclusivas ✅
+

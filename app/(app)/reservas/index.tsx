@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
@@ -30,6 +31,9 @@ export default function ReservasIndex() {
   const myBookings = bookings.filter((b) => b.userId === userId).slice(0, 5);
 
   const areasById = new Map(config?.areas.map((a) => [a.id, a.name]) ?? []);
+
+  const router = useRouter();
+  const role = useSessionStore((s) => s.session?.role ?? null);
 
   const grouped = spaces.reduce<Record<string, typeof spaces>>((acc, s) => {
     const areaName = areasById.get(s.areaId) ?? 'Sin área';
@@ -150,6 +154,15 @@ export default function ReservasIndex() {
             className="rounded-xl bg-black px-4 py-3"
             onPress={() => void createMockBooking(userId)}
           >
+            {role === 'admin' ? (
+              <Pressable
+                className="rounded-xl bg-neutral-200 px-4 py-3"
+                onPress={() => router.push('/(admin)/space-builder')}
+              >
+                <Text className="text-center">Ir a Space Builder (Admin)</Text>
+              </Pressable>
+            ) : null}
+
             <Text className="text-white text-center">Crear reserva mock (1h)</Text>
           </Pressable>
         </>
