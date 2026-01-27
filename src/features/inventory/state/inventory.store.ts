@@ -1,27 +1,60 @@
 import { create } from 'zustand';
 
 import { di } from '@/di';
-import type { Asset, Loan } from '@/features/inventory/domain/inventory.types';
+import type {
+  Asset,
+  AssetStatus,
+  Loan,
+  LoanStatus,
+} from '@/features/inventory/domain/inventory.types';
 
-type Status = 'idle' | 'loading' | 'ready' | 'error';
+type LoadStatus = 'idle' | 'loading' | 'ready' | 'error';
 
 interface InventoryState {
-  status: Status;
+  status: LoadStatus;
   assets: Asset[];
   loans: Loan[];
 
   hydrate: () => Promise<void>;
-
   seedMockAssets: () => Promise<void>;
+
   addMockAsset: () => Promise<void>;
   createMockLoan: (userId: string) => Promise<void>;
   returnLoan: (loanId: string) => Promise<void>;
+  getAssetById: (assetId: string) => Asset | null;
+  getActiveLoanForAsset: (assetId: string) => Loan | null;
+  getLoansForAsset: (assetId: string) => Loan[];
 }
+
+const ASSET_AVAILABLE: AssetStatus = 'available';
+const ASSET_LOANED: AssetStatus = 'loaned';
+const LOAN_ACTIVE: LoanStatus = 'active';
+const LOAN_RETURNED: LoanStatus = 'returned';
 
 export const useInventoryStore = create<InventoryState>((set, get) => ({
   status: 'idle',
   assets: [],
   loans: [],
+
+  getAssetById: (assetId) => get().assets.find((a) => a.id === assetId) ?? null,
+
+  getActiveLoanForAsset: (assetId) =>
+    get().loans.find((l) => l.assetId === assetId && l.status === 'active') ?? null,
+
+  getLoansForAsset: (assetId) => get().loans.filter((l) => l.assetId === assetId),
+
+  hydrate: async () => {
+    set({ status: 'loading' });
+    try {
+      const [assets, loans] = await Promise.all([
+        di.inventory.inventoryRepo.loadAssets(),
+        di.inventory.inventoryRepo.loadLoans(),
+      ]);
+      set({ status: 'ready', assets, loans });
+    } catch {
+      set({ status: 'error' });
+    }
+  },
 
   seedMockAssets: async () => {
     const { assets } = get();
@@ -32,21 +65,21 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
         id: 'as-seed-1',
         name: 'Monitor 24" #1',
         category: 'Monitor',
-        status: 'available',
+        status: ASSET_AVAILABLE,
         tags: ['MVP'],
       },
       {
         id: 'as-seed-2',
         name: 'Laptop Stand #1',
         category: 'Soporte',
-        status: 'available',
+        status: ASSET_AVAILABLE,
         tags: ['MVP'],
       },
       {
         id: 'as-seed-3',
         name: 'HDMI Cable #1',
         category: 'Cable',
-        status: 'available',
+        status: ASSET_AVAILABLE,
         tags: ['MVP'],
       },
     ];
@@ -55,56 +88,42 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     set({ assets: seed });
   },
 
-  hydrate: async () => {
-    set({ status: 'loading' });
-    try {
-      const [assets, loans] = await Promise.all([
-        di.inventory.inventoryRepo.loadAssets(),
-        di.inventory.inventoryRepo.loadLoans(),
-      ]);
-
-      set({ status: 'ready', assets, loans });
-    } catch {
-      set({ status: 'error' });
-    }
-  },
-
   addMockAsset: async () => {
     const { assets } = get();
-
     const next: Asset = {
       id: `as-${Date.now()}`,
       name: `Monitor ${assets.length + 1}`,
       category: 'Monitor',
-      status: 'available',
+      status: ASSET_AVAILABLE,
       tags: ['MVP'],
     };
 
-    const updated: Asset[] = [next, ...assets];
+    const updated = [next, ...assets];
     await di.inventory.inventoryRepo.saveAssets(updated);
     set({ assets: updated });
   },
 
   createMockLoan: async (userId) => {
     const { assets, loans } = get();
-    const candidate = assets.find((a) => a.status === 'available');
+
+    const candidate = assets.find((a) => a.status === ASSET_AVAILABLE);
     if (!candidate) return;
 
-    const nowISO = new Date().toISOString();
+    const now = new Date().toISOString();
 
     const loan: Loan = {
       id: `ln-${Date.now()}`,
       assetId: candidate.id,
       userId,
-      startISO: nowISO,
+      startISO: now,
       endISO: null,
-      status: 'active',
+      status: LOAN_ACTIVE,
     };
 
     const updatedLoans: Loan[] = [loan, ...loans];
 
     const updatedAssets: Asset[] = assets.map((a) =>
-      a.id === candidate.id ? { ...a, status: 'loaned' } : a,
+      a.id === candidate.id ? { ...a, status: ASSET_LOANED } : a,
     );
 
     await Promise.all([
@@ -117,17 +136,18 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
 
   returnLoan: async (loanId) => {
     const { loans, assets } = get();
-    const loan = loans.find((l) => l.id === loanId);
-    if (!loan || loan.status !== 'active') return;
 
-    const endedISO = new Date().toISOString();
+    const loan = loans.find((l) => l.id === loanId);
+    if (!loan || loan.status !== LOAN_ACTIVE) return;
+
+    const ended = new Date().toISOString();
 
     const updatedLoans: Loan[] = loans.map((l) =>
-      l.id === loanId ? { ...l, status: 'returned', endISO: endedISO } : l,
+      l.id === loanId ? { ...l, status: LOAN_RETURNED, endISO: ended } : l,
     );
 
     const updatedAssets: Asset[] = assets.map((a) =>
-      a.id === loan.assetId ? { ...a, status: 'available' } : a,
+      a.id === loan.assetId ? { ...a, status: ASSET_AVAILABLE } : a,
     );
 
     await Promise.all([

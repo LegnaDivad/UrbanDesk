@@ -262,3 +262,25 @@ Web: abrir /reservas → ir a Space Builder (admin) → seed → guardar → ref
 
 Móvil: mismas rutas, sin prompts web-only, sin APIs exclusivas ✅
 
+### Inventory (MVP hardening)
+
+- Fixed `kv` helper to expose `getJson/setJson` with a single export.
+- Reworked `inventory.store` to use strict `AssetStatus/LoanStatus` literals.
+- Fixed Inventory screen to call `seedMockAssets`.
+Checklist Universal
+TypeScript: npm run typecheck ✅
+
+Web: /inventory → Seed → Create Loan → Return Loan ✅
+
+Móvil: mismas acciones, sin crashes ✅
+
+### Inventory domain helpers
+
+- Added inventory store selectors to query assets and loans by assetId.
+Checklist
+TS ok
+
+Web ok
+
+Móvil ok
+
