@@ -237,3 +237,15 @@ TypeScript: npm run typecheck ✅
 Web: /inventory carga + seed persiste tras refresh ✅
 
 Móvil: seed + préstamo + return persiste tras reload ✅
+
+### Routing
+
+- Added global auth + role guard in `app/_layout.tsx` to enforce `(public)/(app)/(admin)` zones.
+- Introduced `(app)` Tabs layout for Reservas + Inventory.
+- Added `(admin)` Stack layout for admin-only modules (e.g., Space Builder).
+Checklist Universal
+TypeScript: npm run typecheck ✅
+
+Web responsiva: /login → login, signed-in → /reservas, tabs funcional ✅
+
+Móvil: misma navegación y redirects en iOS/Android ✅
