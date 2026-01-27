@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-import { loadWorkspaceConfig, saveWorkspaceConfig } from '@/features/space-builder/data/workspaceConfig.repo';
+import { di } from '@/di';
 import { createDefaultWorkspaceConfig } from '@/features/space-builder/domain/defaultConfig';
 import type { WorkspaceConfig } from '@/features/space-builder/domain/spaceBuilder.types';
 
@@ -23,7 +23,7 @@ export const useSpaceBuilderStore = create<SpaceBuilderState>((set, get) => ({
   hydrate: async () => {
     set({ status: 'loading' });
     try {
-      const config = await loadWorkspaceConfig();
+      const config = await di.spaces.workspaceRepo.load();
       set({ status: 'ready', config, isDirty: false });
     } catch {
       set({ status: 'error' });
@@ -35,7 +35,7 @@ export const useSpaceBuilderStore = create<SpaceBuilderState>((set, get) => ({
   persist: async () => {
     const { config } = get();
     if (!config) return;
-    await saveWorkspaceConfig(config);
+    await di.spaces.workspaceRepo.save(config);
     set({ isDirty: false });
   },
 

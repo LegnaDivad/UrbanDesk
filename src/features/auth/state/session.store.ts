@@ -1,9 +1,7 @@
 import { create } from 'zustand';
 
+import { di } from '@/di';
 import type { Session, UserRole } from '@/features/auth/domain/session.types';
-import { kv } from '@/lib/storage/kv';
-
-const SESSION_KEY = 'ud.session.v1';
 
 type AuthStatus = 'loading' | 'signedOut' | 'signedIn';
 
@@ -16,37 +14,38 @@ interface SessionState {
   signOut: () => Promise<void>;
 }
 
-export const useSessionStore = create<SessionState>((set, get) => ({
+function createMockSession(role: UserRole): Session {
+  return {
+    userId: `u-${Date.now()}`,
+    role,
+  };
+}
+
+export const useSessionStore = create<SessionState>((set) => ({
   status: 'loading',
   session: null,
 
   hydrate: async () => {
-    const raw = await kv.getItem(SESSION_KEY);
-    if (!raw) {
-      set({ status: 'signedOut', session: null });
-      return;
-    }
-
     try {
-      const parsed = JSON.parse(raw) as Session;
-      if (!parsed?.userId || !parsed?.role) {
+      const session = await di.auth.sessionRepo.load();
+      if (!session) {
         set({ status: 'signedOut', session: null });
         return;
       }
-      set({ status: 'signedIn', session: parsed });
+      set({ status: 'signedIn', session });
     } catch {
       set({ status: 'signedOut', session: null });
     }
   },
 
   signInMock: async (role) => {
-    const session: Session = { userId: 'dev-user', role };
-    await kv.setItem(SESSION_KEY, JSON.stringify(session));
+    const session = createMockSession(role);
+    await di.auth.sessionRepo.save(session);
     set({ status: 'signedIn', session });
   },
 
   signOut: async () => {
-    await kv.removeItem(SESSION_KEY);
+    await di.auth.sessionRepo.save(null);
     set({ status: 'signedOut', session: null });
   },
 }));

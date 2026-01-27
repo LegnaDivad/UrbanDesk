@@ -1,9 +1,9 @@
 import { create } from 'zustand';
 
-import { loadBookings, saveBookings } from '@/features/reservas/data/bookings.repo';
+import { di } from '@/di';
+import { canBook } from '@/features/reservas/domain/bookingPolicy';
 import { addMinutes, roundToNext15Min } from '@/features/reservas/domain/bookingWindow';
 import type { Booking, Space } from '@/features/reservas/domain/reservas.types';
-import { loadWorkspaceConfig } from '@/features/space-builder/data/workspaceConfig.repo';
 import type { WorkspaceConfig } from '@/features/space-builder/domain/spaceBuilder.types';
 
 function spacesFromConfig(config: WorkspaceConfig | null): Space[] {
@@ -22,36 +22,20 @@ export interface ReservasState {
   spaces: Space[];
   bookings: Booking[];
   selectedSpaceId: string | null;
+
   bookingStartISO: string;
   durationMinutes: number;
 
+  hydrate: () => Promise<void>;
+  selectSpace: (spaceId: string) => void;
+
   setBookingStartISO: (iso: string) => void;
   setDurationMinutes: (min: number) => void;
+
   cancelBooking: (bookingId: string) => Promise<void>;
   isSpaceOccupied: (spaceId: string) => boolean;
 
-  hydrate: () => Promise<void>;
-  selectSpace: (spaceId: string) => void;
   createMockBooking: (userId: string) => Promise<void>;
-}
-
-function overlaps(aStart: string, aEnd: string, bStart: string, bEnd: string): boolean {
-  const aS = new Date(aStart).getTime();
-  const aE = new Date(aEnd).getTime();
-  const bS = new Date(bStart).getTime();
-  const bE = new Date(bEnd).getTime();
-  return aS < bE && bS < aE;
-}
-
-function canBook(
-  spaceId: string,
-  startISO: string,
-  endISO: string,
-  bookings: Booking[],
-): boolean {
-  return !bookings.some(
-    (b) => b.spaceId === spaceId && overlaps(startISO, endISO, b.startISO, b.endISO),
-  );
 }
 
 export const useReservasStore = create<ReservasState>((set, get) => ({
@@ -60,6 +44,7 @@ export const useReservasStore = create<ReservasState>((set, get) => ({
   spaces: [],
   bookings: [],
   selectedSpaceId: null,
+
   bookingStartISO: roundToNext15Min(new Date()).toISOString(),
   durationMinutes: 60,
 
@@ -67,9 +52,10 @@ export const useReservasStore = create<ReservasState>((set, get) => ({
     set({ status: 'loading' });
     try {
       const [config, bookings] = await Promise.all([
-        loadWorkspaceConfig(),
-        loadBookings(),
+        di.reservas.workspaceRepo.load(),
+        di.reservas.bookingRepo.load(),
       ]);
+
       const spaces = spacesFromConfig(config);
       set({
         status: 'ready',
@@ -86,13 +72,12 @@ export const useReservasStore = create<ReservasState>((set, get) => ({
   selectSpace: (spaceId) => set({ selectedSpaceId: spaceId }),
 
   setBookingStartISO: (iso) => set({ bookingStartISO: iso }),
-
   setDurationMinutes: (min) => set({ durationMinutes: min }),
 
   cancelBooking: async (bookingId) => {
     const { bookings } = get();
     const updated = bookings.filter((b) => b.id !== bookingId);
-    await saveBookings(updated);
+    await di.reservas.bookingRepo.save(updated);
     set({ bookings: updated });
   },
 
@@ -120,7 +105,7 @@ export const useReservasStore = create<ReservasState>((set, get) => ({
     };
 
     const updated = [next, ...bookings];
-    await saveBookings(updated);
+    await di.reservas.bookingRepo.save(updated);
     set({ bookings: updated });
   },
 }));

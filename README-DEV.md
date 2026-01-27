@@ -105,3 +105,60 @@ Checklist Universal
 
  Móvil: /logout limpia sesión y vuelve a /login
 
+README.md (bloque listo)
+## Reservas MVP
+Reservas derives available spaces from the `WorkspaceConfig` created in Space Builder (admin).
+Bookings are currently mocked and persisted locally per platform:
+- Web: localStorage
+- Native: SecureStore
+
+MVP flow:
+1) Admin seeds & saves WorkspaceConfig in Space Builder
+2) User sees dynamic spaces in Reservas
+3) User creates a 1-hour mock booking (persisted locally)
+
+Checklist Universal
+
+ TypeScript: npm run typecheck sin errores
+
+ Web: seed config → ver spaces → crear booking → persiste tras reload
+
+ Móvil: mismo flujo en iOS y Android (sin crashes)
+ ### Booking counts (MVP)
+The UI shows total bookings for debugging. Additional derived counts are displayed:
+- bookings for selected space
+- bookings for current user
+
+README.md (bloque)
+### Booking overlap guard
+A minimal guard prevents creating a booking if the selected space already has an overlapping booking for the same time window.
+
+Checklist Universal
+
+ TypeScript OK
+
+ Web OK
+
+ Móvil OK
+
+ ### Reservas F3.2
+- Booking window controls: start time (+/- 15m) and duration (30/60)
+- Occupancy indicator per space based on overlap detection
+- Store initializes booking window defaults to avoid undefined state before hydration
+Checklist Universal
+ TypeScript: npm run typecheck
+
+ Web: inicia, muestra ocupación, reservar/cancelar funciona
+
+ Móvil: mismo flujo en iOS y Android
+
+ ### Storage (KV)
+The `kv` adapter provides low-level string storage and JSON helpers:
+- `getItem/setItem/removeItem`
+- `getJson/setJson` for typed persistence across features (reservas, space builder, auth, etc.)
+Checklist Universal
+ TypeScript OK
+
+ Web OK
+
+ Móvil OK
