@@ -1,12 +1,8 @@
 import { create } from 'zustand';
 
 import { di } from '@/di';
-import type {
-  Asset,
-  AssetStatus,
-  Loan,
-  LoanStatus,
-} from '@/features/inventory/domain/inventory.types';
+import type { Asset, AssetStatus, Loan, LoanStatus } from '@/features/inventory/domain/inventory.types';
+import { useNotificationsStore } from '@/features/notifications';
 
 type LoadStatus = 'idle' | 'loading' | 'ready' | 'error';
 
@@ -20,8 +16,9 @@ interface InventoryState {
 
   addMockAsset: () => Promise<void>;
   createMockLoan: (userId: string) => Promise<void>;
-  createMockLoanForAsset: (assetId: string, userId: string) => Promise<void>; // 👈 NUEVO
+  createMockLoanForAsset: (assetId: string, userId: string) => Promise<void>;
   returnLoan: (loanId: string) => Promise<void>;
+
   getAssetById: (assetId: string) => Asset | null;
   getActiveLoanForAsset: (assetId: string) => Loan | null;
   getLoansForAsset: (assetId: string) => Loan[];
@@ -40,7 +37,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
   getAssetById: (assetId) => get().assets.find((a) => a.id === assetId) ?? null,
 
   getActiveLoanForAsset: (assetId) =>
-    get().loans.find((l) => l.assetId === assetId && l.status === 'active') ?? null,
+    get().loans.find((l) => l.assetId === assetId && l.status === LOAN_ACTIVE) ?? null,
 
   getLoansForAsset: (assetId) => get().loans.filter((l) => l.assetId === assetId),
 
@@ -91,6 +88,12 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     ]);
 
     set({ assets: seed, loans: [] });
+
+    await useNotificationsStore.getState().notify({
+      kind: 'info',
+      title: 'Inventario inicializado',
+      message: `Se cargaron ${seed.length} assets mock.`,
+    });
   },
 
   addMockAsset: async () => {
@@ -106,22 +109,54 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     const updated = [next, ...assets];
     await di.inventory.inventoryRepo.saveAssets(updated);
     set({ assets: updated });
+
+    await useNotificationsStore.getState().notify({
+      kind: 'success',
+      title: 'Asset creado',
+      message: `${next.name} agregado al inventario.`,
+      meta: { assetId: next.id },
+    });
   },
 
   createMockLoan: async (userId) => {
     const { assets } = get();
 
     const candidate = assets.find((a) => a.status === ASSET_AVAILABLE);
-    if (!candidate) return;
+    if (!candidate) {
+      await useNotificationsStore.getState().notify({
+        kind: 'warning',
+        title: 'Sin assets disponibles',
+        message: 'No hay assets disponibles para prestar.',
+      });
+      return;
+    }
 
     await get().createMockLoanForAsset(candidate.id, userId);
   },
 
-    createMockLoanForAsset: async (assetId, userId) => {
+  createMockLoanForAsset: async (assetId, userId) => {
     const { assets, loans } = get();
 
     const asset = assets.find((a) => a.id === assetId);
-    if (!asset || asset.status !== ASSET_AVAILABLE) return;
+    if (!asset) {
+      await useNotificationsStore.getState().notify({
+        kind: 'error',
+        title: 'Asset no encontrado',
+        message: `No existe el asset ${assetId}.`,
+        meta: { assetId },
+      });
+      return;
+    }
+
+    if (asset.status !== ASSET_AVAILABLE) {
+      await useNotificationsStore.getState().notify({
+        kind: 'warning',
+        title: 'Asset no disponible',
+        message: `${asset.name} ya está prestado.`,
+        meta: { assetId },
+      });
+      return;
+    }
 
     const now = new Date().toISOString();
 
@@ -133,6 +168,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
       endISO: null,
       status: LOAN_ACTIVE,
     };
+
     const updatedLoans: Loan[] = [loan, ...loans];
     const updatedAssets: Asset[] = assets.map((a) =>
       a.id === assetId ? { ...a, status: ASSET_LOANED } : a,
@@ -144,13 +180,38 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     ]);
 
     set({ loans: updatedLoans, assets: updatedAssets });
+
+    await useNotificationsStore.getState().notify({
+      kind: 'success',
+      title: 'Préstamo creado',
+      message: `${asset.name} prestado a ${userId}.`,
+      meta: { assetId, loanId: loan.id, userId },
+    });
   },
 
   returnLoan: async (loanId) => {
     const { loans, assets } = get();
 
     const loan = loans.find((l) => l.id === loanId);
-    if (!loan || loan.status !== LOAN_ACTIVE) return;
+    if (!loan) {
+      await useNotificationsStore.getState().notify({
+        kind: 'error',
+        title: 'Préstamo no encontrado',
+        message: `No existe el loan ${loanId}.`,
+        meta: { loanId },
+      });
+      return;
+    }
+
+    if (loan.status !== LOAN_ACTIVE) {
+      await useNotificationsStore.getState().notify({
+        kind: 'warning',
+        title: 'Préstamo ya cerrado',
+        message: `El loan ${loanId} ya está en estado ${loan.status}.`,
+        meta: { loanId, status: loan.status },
+      });
+      return;
+    }
 
     const ended = new Date().toISOString();
 
@@ -168,5 +229,14 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     ]);
 
     set({ loans: updatedLoans, assets: updatedAssets });
+
+    const assetName = assets.find((a) => a.id === loan.assetId)?.name ?? loan.assetId;
+
+    await useNotificationsStore.getState().notify({
+      kind: 'info',
+      title: 'Préstamo devuelto',
+      message: `${assetName} devuelto por ${loan.userId}.`,
+      meta: { assetId: loan.assetId, loanId, userId: loan.userId },
+    });
   },
 }));
