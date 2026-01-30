@@ -15,7 +15,8 @@ type RouteTarget =
   | { pathname: '/(app)/reservas' }
   | { pathname: '/(app)/inventory/[assetId]'; params: { assetId: string } };
 
-function routeForPayload(payload: NotificationPayload): RouteTarget | null {
+function routeForPayload(payload: NotificationPayload | null | undefined): RouteTarget | null {
+  if (!payload) return null;
   switch (payload.kind) {
     case 'booking_created':
     case 'booking_cancelled':
@@ -42,7 +43,8 @@ function actionClasses(tone: ActionTone): { bg: string; fg: string } {
   return { bg: 'bg-neutral-200', fg: 'text-black' };
 }
 
-function primaryLabelForPayload(payload: NotificationPayload): string {
+function primaryLabelForPayload(payload: NotificationPayload | null | undefined): string {
+  if (!payload) return 'Abrir';
   switch (payload.kind) {
     case 'booking_created':
     case 'booking_cancelled':
@@ -183,7 +185,8 @@ export default function NotificationsIndex() {
           <View className="gap-2">
             {items.map((n) => {
               const isUnread = !n.readAtISO;
-              const target = routeForPayload(n.payload);
+              const payload = (n as unknown as { payload?: NotificationPayload }).payload;
+              const target = routeForPayload(payload);
               const hasNav = Boolean(target);
 
               const actions: {
@@ -194,7 +197,7 @@ export default function NotificationsIndex() {
 
               if (hasNav) {
                 actions.push({
-                  label: primaryLabelForPayload(n.payload),
+                  label: primaryLabelForPayload(payload),
                   tone: 'primary',
                   onPress: () => void onOpenNotification(n),
                 });
@@ -214,21 +217,21 @@ export default function NotificationsIndex() {
                 });
               }
 
-              if (n.payload.kind === 'booking_created') {
-                const payload = n.payload;
+              if (payload?.kind === 'booking_created') {
+                const bookingPayload = payload;
                 actions.push({
                   label: 'Cancelar',
                   tone: 'danger',
-                  onPress: () => void onCancelBookingFromNotification(n, payload),
+                  onPress: () => void onCancelBookingFromNotification(n, bookingPayload),
                 });
               }
 
-              if (n.payload.kind === 'loan_created') {
-                const payload = n.payload;
+              if (payload?.kind === 'loan_created') {
+                const loanPayload = payload;
                 actions.push({
                   label: 'Devolver',
                   tone: 'neutral',
-                  onPress: () => void onReturnLoanFromNotification(n, payload),
+                  onPress: () => void onReturnLoanFromNotification(n, loanPayload),
                 });
               }
 
