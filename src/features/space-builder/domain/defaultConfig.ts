@@ -13,11 +13,34 @@ export function createDefaultWorkspaceConfig(): WorkspaceConfig {
       { id: 'svc-3', name: 'Proyector' },
     ],
     spaces: [
-      { id: 'desk-1', name: 'Desk 01', type: 'desk', areaId: 'area-1', serviceIds: ['svc-1'] },
-      { id: 'desk-2', name: 'Desk 02', type: 'desk', areaId: 'area-1', serviceIds: ['svc-1', 'svc-2'] },
-      { id: 'room-1', name: 'Sala A', type: 'room', areaId: 'area-2', serviceIds: ['svc-1', 'svc-3'] },
-      { id: 'common-1', name: 'Zona Común', type: 'common', areaId: 'area-1', serviceIds: ['svc-1'] },
+      {
+        id: 'desk-1',
+        name: 'Desk 01',
+        type: 'desk',
+        areaId: 'area-1',
+        serviceIds: ['svc-1'],
+      },
+      {
+        id: 'desk-2',
+        name: 'Desk 02',
+        type: 'desk',
+        areaId: 'area-1',
+        serviceIds: ['svc-1', 'svc-2'],
+      },
+      {
+        id: 'room-1',
+        name: 'Sala A',
+        type: 'room',
+        areaId: 'area-2',
+        serviceIds: ['svc-1', 'svc-3'],
+      },
+      {
+        id: 'common-1',
+        name: 'Zona Común',
+        type: 'common',
+        areaId: 'area-1',
+        serviceIds: ['svc-1'],
+      },
     ],
   };
 }
-

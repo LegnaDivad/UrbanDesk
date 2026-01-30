@@ -16,4 +16,3 @@ export async function loadWorkspaceConfig(): Promise<WorkspaceConfig | null> {
 export async function saveWorkspaceConfig(config: WorkspaceConfig): Promise<void> {
   await kv.setItem(KEY, JSON.stringify(config));
 }
-

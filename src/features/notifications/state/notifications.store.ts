@@ -1,30 +1,30 @@
 import { create } from 'zustand';
 
 import { di } from '@/di';
-import type { AppNotification, NotificationKind } from '@/features/notifications/domain/notifications.types';
+import type {
+  AppNotification,
+  NotificationMeta,
+  NotificationPayload,
+} from '@/features/notifications/domain/notifications.types';
 
 type LoadStatus = 'idle' | 'loading' | 'ready' | 'error';
 
-function uid(prefix: string) {
-  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
-export interface NotificationsState {
+interface NotificationsState {
   status: LoadStatus;
   items: AppNotification[];
 
   hydrate: () => Promise<void>;
 
-  notify: (input: {
-    kind?: NotificationKind;
+  push: (input: {
     title: string;
-    message: string;
-    meta?: Record<string, string>;
+    body?: string;
+    payload: NotificationPayload;
+    meta?: NotificationMeta;
   }) => Promise<void>;
-
   markRead: (id: string) => Promise<void>;
+  markUnread: (id: string) => Promise<void>;
   markAllRead: () => Promise<void>;
-  clear: () => Promise<void>;
+  clearAll: () => Promise<void>;
 
   unreadCount: () => number;
 }
@@ -37,22 +37,21 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
     set({ status: 'loading' });
     try {
       const items = await di.notifications.notificationsRepo.load();
-      const sorted = [...items].sort((a, b) => (a.createdAtISO < b.createdAtISO ? 1 : -1));
-      set({ status: 'ready', items: sorted });
+      set({ status: 'ready', items: items ?? [] });
     } catch {
       set({ status: 'error' });
     }
   },
 
-  notify: async ({ kind = 'info', title, message, meta }) => {
+  push: async ({ title, body, payload, meta }) => {
     const next: AppNotification = {
-      id: uid('ntf'),
-      kind,
+      id: `nt-${Date.now()}`,
       title,
-      message,
-      meta,
+      body,
       createdAtISO: new Date().toISOString(),
       readAtISO: null,
+      payload,
+      meta,
     };
 
     const updated = [next, ...get().items];
@@ -63,20 +62,34 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
   markRead: async (id) => {
     const { items } = get();
     const now = new Date().toISOString();
-    const updated = items.map((n) => (n.id === id ? { ...n, readAtISO: n.readAtISO ?? now } : n));
+
+    const updated = items.map((n) =>
+      n.id === id && !n.readAtISO ? { ...n, readAtISO: now } : n,
+    );
+
+    await di.notifications.notificationsRepo.save(updated);
+    set({ items: updated });
+  },
+
+  markUnread: async (id) => {
+    const { items } = get();
+
+    const updated = items.map((n) =>
+      n.id === id && n.readAtISO ? { ...n, readAtISO: null } : n,
+    );
+
     await di.notifications.notificationsRepo.save(updated);
     set({ items: updated });
   },
 
   markAllRead: async () => {
-    const { items } = get();
     const now = new Date().toISOString();
-    const updated = items.map((n) => ({ ...n, readAtISO: n.readAtISO ?? now }));
+    const updated = get().items.map((n) => (n.readAtISO ? n : { ...n, readAtISO: now }));
     await di.notifications.notificationsRepo.save(updated);
     set({ items: updated });
   },
 
-  clear: async () => {
+  clearAll: async () => {
     await di.notifications.notificationsRepo.save([]);
     set({ items: [] });
   },

@@ -1,7 +1,13 @@
+// src/features/inventory/state/inventory.store.ts
 import { create } from 'zustand';
 
 import { di } from '@/di';
-import type { Asset, AssetStatus, Loan, LoanStatus } from '@/features/inventory/domain/inventory.types';
+import type {
+  Asset,
+  AssetStatus,
+  Loan,
+  LoanStatus,
+} from '@/features/inventory/domain/inventory.types';
 import { useNotificationsStore } from '@/features/notifications';
 
 type LoadStatus = 'idle' | 'loading' | 'ready' | 'error';
@@ -26,6 +32,7 @@ interface InventoryState {
 
 const ASSET_AVAILABLE: AssetStatus = 'available';
 const ASSET_LOANED: AssetStatus = 'loaned';
+
 const LOAN_ACTIVE: LoanStatus = 'active';
 const LOAN_RETURNED: LoanStatus = 'returned';
 
@@ -88,16 +95,11 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     ]);
 
     set({ assets: seed, loans: [] });
-
-    await useNotificationsStore.getState().notify({
-      kind: 'info',
-      title: 'Inventario inicializado',
-      message: `Se cargaron ${seed.length} assets mock.`,
-    });
   },
 
   addMockAsset: async () => {
     const { assets } = get();
+
     const next: Asset = {
       id: `as-${Date.now()}`,
       name: `Monitor ${assets.length + 1}`,
@@ -109,13 +111,6 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     const updated = [next, ...assets];
     await di.inventory.inventoryRepo.saveAssets(updated);
     set({ assets: updated });
-
-    await useNotificationsStore.getState().notify({
-      kind: 'success',
-      title: 'Asset creado',
-      message: `${next.name} agregado al inventario.`,
-      meta: { assetId: next.id },
-    });
   },
 
   createMockLoan: async (userId) => {
@@ -123,10 +118,10 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
 
     const candidate = assets.find((a) => a.status === ASSET_AVAILABLE);
     if (!candidate) {
-      await useNotificationsStore.getState().notify({
-        kind: 'warning',
+      await useNotificationsStore.getState().push({
         title: 'Sin assets disponibles',
-        message: 'No hay assets disponibles para prestar.',
+        body: 'No hay assets disponibles para prestar.',
+        payload: { kind: 'system' },
       });
       return;
     }
@@ -137,23 +132,24 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
   createMockLoanForAsset: async (assetId, userId) => {
     const { assets, loans } = get();
 
-    const asset = assets.find((a) => a.id === assetId);
+    const asset = assets.find((a) => a.id === assetId) ?? null;
     if (!asset) {
-      await useNotificationsStore.getState().notify({
-        kind: 'error',
+      await useNotificationsStore.getState().push({
         title: 'Asset no encontrado',
-        message: `No existe el asset ${assetId}.`,
-        meta: { assetId },
+        body: `No existe el asset ${assetId}.`,
+        payload: { kind: 'system' },
       });
       return;
     }
 
-    if (asset.status !== ASSET_AVAILABLE) {
-      await useNotificationsStore.getState().notify({
-        kind: 'warning',
-        title: 'Asset no disponible',
-        message: `${asset.name} ya está prestado.`,
-        meta: { assetId },
+    const alreadyActive = loans.some(
+      (l) => l.assetId === assetId && l.status === LOAN_ACTIVE,
+    );
+    if (alreadyActive || asset.status !== ASSET_AVAILABLE) {
+      await useNotificationsStore.getState().push({
+        title: 'No disponible',
+        body: `El asset ${assetId} ya tiene un préstamo activo.`,
+        payload: { kind: 'system' },
       });
       return;
     }
@@ -170,6 +166,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     };
 
     const updatedLoans: Loan[] = [loan, ...loans];
+
     const updatedAssets: Asset[] = assets.map((a) =>
       a.id === assetId ? { ...a, status: ASSET_LOANED } : a,
     );
@@ -181,34 +178,31 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
 
     set({ loans: updatedLoans, assets: updatedAssets });
 
-    await useNotificationsStore.getState().notify({
-      kind: 'success',
+    await useNotificationsStore.getState().push({
       title: 'Préstamo creado',
-      message: `${asset.name} prestado a ${userId}.`,
-      meta: { assetId, loanId: loan.id, userId },
+      body: `Asset: ${assetId} • Usuario: ${userId}`,
+      payload: { kind: 'loan_created', loanId: loan.id, assetId },
     });
   },
 
   returnLoan: async (loanId) => {
     const { loans, assets } = get();
 
-    const loan = loans.find((l) => l.id === loanId);
+    const loan = loans.find((l) => l.id === loanId) ?? null;
     if (!loan) {
-      await useNotificationsStore.getState().notify({
-        kind: 'error',
+      await useNotificationsStore.getState().push({
         title: 'Préstamo no encontrado',
-        message: `No existe el loan ${loanId}.`,
-        meta: { loanId },
+        body: `No existe el préstamo ${loanId}.`,
+        payload: { kind: 'system' },
       });
       return;
     }
 
     if (loan.status !== LOAN_ACTIVE) {
-      await useNotificationsStore.getState().notify({
-        kind: 'warning',
-        title: 'Préstamo ya cerrado',
-        message: `El loan ${loanId} ya está en estado ${loan.status}.`,
-        meta: { loanId, status: loan.status },
+      await useNotificationsStore.getState().push({
+        title: 'Préstamo no retornable',
+        body: `El préstamo ${loanId} ya está en estado ${loan.status}.`,
+        payload: { kind: 'system' },
       });
       return;
     }
@@ -230,13 +224,10 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
 
     set({ loans: updatedLoans, assets: updatedAssets });
 
-    const assetName = assets.find((a) => a.id === loan.assetId)?.name ?? loan.assetId;
-
-    await useNotificationsStore.getState().notify({
-      kind: 'info',
+    await useNotificationsStore.getState().push({
       title: 'Préstamo devuelto',
-      message: `${assetName} devuelto por ${loan.userId}.`,
-      meta: { assetId: loan.assetId, loanId, userId: loan.userId },
+      body: `Asset: ${loan.assetId}`,
+      payload: { kind: 'loan_returned', loanId, assetId: loan.assetId },
     });
   },
 }));
