@@ -1,5 +1,6 @@
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { useEffect } from 'react';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { useSessionStore } from '@/features/auth';
 
@@ -11,16 +12,14 @@ export default function RootLayout() {
   const role = useSessionStore((s) => s.session?.role ?? null);
   const hydrate = useSessionStore((s) => s.hydrate);
 
-  // 1) Hidrata sesión al arrancar (web + mobile)
   useEffect(() => {
     void hydrate();
   }, [hydrate]);
 
-  // 2) Aplica reglas por “zona” de rutas
   useEffect(() => {
     if (status === 'loading') return;
 
-    const [group] = segments; // "(public)" | "(app)" | "(admin)" | undefined
+    const [group] = segments;
     const inPublic = group === '(public)';
     const inAdmin = group === '(admin)';
 
@@ -29,7 +28,6 @@ export default function RootLayout() {
       return;
     }
 
-    // signedIn
     if (inPublic) {
       router.replace('/(app)/reservas');
       return;
@@ -40,5 +38,9 @@ export default function RootLayout() {
     }
   }, [status, role, segments, router]);
 
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <SafeAreaProvider>
+      <Stack screenOptions={{ headerShown: false }} />
+    </SafeAreaProvider>
+  );
 }

@@ -1,10 +1,13 @@
+import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { useSessionStore } from '@/features/auth';
 import { useInventoryStore } from '@/features/inventory';
 
+
 export default function InventoryIndex() {
+  const router = useRouter();
   const userId = useSessionStore((s) => s.session?.userId) ?? 'unknown';
 
   // Store state
@@ -136,24 +139,33 @@ export default function InventoryIndex() {
         <Text className="text-sm">Assets</Text>
 
         {filteredAssets.map((a) => {
-          const activeLoan = getActiveLoanForAsset(a.id);
+  const activeLoan = getActiveLoanForAsset(a.id);
 
-          return (
-            <View key={a.id} className="rounded-xl bg-neutral-100 px-4 py-3 gap-1">
-              <Text className="text-sm">{a.name}</Text>
-              <Text className="text-xs text-neutral-600">
-                {a.category} • {a.status}
-              </Text>
+  return (
+    <Pressable
+      key={a.id}
+      className="rounded-xl bg-neutral-100 px-4 py-3 gap-1"
+      onPress={() =>
+        router.push({
+          pathname: '/(app)/inventory/[assetId]',
+          params: { assetId: a.id },
+        })
+      }
+    >
+      <Text className="text-sm">{a.name}</Text>
+      <Text className="text-xs text-neutral-600">
+        {a.category} • {a.status}
+      </Text>
 
-              {activeLoan ? (
-                <Text className="text-xs text-neutral-600">
-                  Prestado a: {activeLoan.userId} •{' '}
-                  {new Date(activeLoan.startISO).toLocaleString()}
-                </Text>
-              ) : null}
-            </View>
-          );
-        })}
+      {activeLoan ? (
+        <Text className="text-xs text-neutral-600">
+          Prestado a: {activeLoan.userId} • {new Date(activeLoan.startISO).toLocaleString()}
+        </Text>
+      ) : null}
+    </Pressable>
+  );
+})}
+
       </View>
 
       {/* Loans list (debug / MVP) */}

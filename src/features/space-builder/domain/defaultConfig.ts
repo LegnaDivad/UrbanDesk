@@ -1,4 +1,4 @@
-import type { WorkspaceConfig } from '@/features/space-builder/domain/spaceBuilder.types';
+import type { WorkspaceConfig } from '@/core/types/workspace';
 
 export function createDefaultWorkspaceConfig(): WorkspaceConfig {
   return {

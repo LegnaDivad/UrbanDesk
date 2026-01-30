@@ -1,14 +1,15 @@
 import { useRouter } from 'expo-router';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, Text } from 'react-native';
 
 import { useSessionStore } from '@/features/auth';
+import { Screen } from '@/ui';
 
 export default function LoginRoute() {
   const router = useRouter();
   const signInMock = useSessionStore((s) => s.signInMock);
 
   return (
-    <View className="flex-1 items-center justify-center gap-3 px-6">
+    <Screen className="items-center justify-center gap-3 px-6">
       <Text className="text-base">Login (dev mock)</Text>
 
       <Pressable
@@ -30,6 +31,6 @@ export default function LoginRoute() {
       >
         <Text className="text-white text-center">Entrar como admin</Text>
       </Pressable>
-    </View>
+    </Screen>
   );
 }

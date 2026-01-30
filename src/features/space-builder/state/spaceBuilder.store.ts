@@ -1,8 +1,10 @@
 import { create } from 'zustand';
 
+import type { WorkspaceConfig } from '@/core/types/workspace';
 import { di } from '@/di';
 import { createDefaultWorkspaceConfig } from '@/features/space-builder/domain/defaultConfig';
-import type { WorkspaceConfig } from '@/features/space-builder/domain/spaceBuilder.types';
+
+
 
 interface SpaceBuilderState {
   status: 'idle' | 'loading' | 'ready' | 'error';

@@ -1,4 +1,4 @@
-import type { WorkspaceConfig } from '@/features/space-builder/domain/spaceBuilder.types';
+import type { WorkspaceConfig } from '@/core/types/workspace';
 import { kv } from '@/lib/storage/kv';
 
 const KEY = 'ud.workspace-config.v1';

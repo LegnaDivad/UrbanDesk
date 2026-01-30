@@ -290,4 +290,8 @@ Móvil ok
 - Display active loan details per asset when loaned.
 - Added quick actions to seed mock assets, create a mock loan, and return the latest active loan.
 
+### Inventory persistence
+
+- Implemented InventoryRepo (local) backed by kv storage.
+- Assets and loans are now persisted across reloads (web + native).
 

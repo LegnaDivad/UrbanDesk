@@ -1,4 +1,4 @@
-import type { WorkspaceConfig } from '@/features/space-builder/domain/spaceBuilder.types';
+import type { WorkspaceConfig } from '@/core/types/workspace';
 import type { WorkspaceRepo } from '@/features/spaces/data/workspace.repo';
 import { kv } from '@/lib/storage/kv';
 
@@ -12,4 +12,3 @@ export const workspaceRepoLocal: WorkspaceRepo = {
     await kv.setJson(KEY, next);
   },
 };
-

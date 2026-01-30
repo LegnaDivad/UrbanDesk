@@ -1,10 +1,10 @@
 import { create } from 'zustand';
 
+import type { WorkspaceConfig } from '@/core/types/workspace';
 import { di } from '@/di';
 import { canBook } from '@/features/reservas/domain/bookingPolicy';
 import { addMinutes, roundToNext15Min } from '@/features/reservas/domain/bookingWindow';
 import type { Booking, Space } from '@/features/reservas/domain/reservas.types';
-import type { WorkspaceConfig } from '@/features/space-builder/domain/spaceBuilder.types';
 
 function spacesFromConfig(config: WorkspaceConfig | null): Space[] {
   if (!config) return [];

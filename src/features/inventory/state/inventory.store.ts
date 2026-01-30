@@ -20,6 +20,7 @@ interface InventoryState {
 
   addMockAsset: () => Promise<void>;
   createMockLoan: (userId: string) => Promise<void>;
+  createMockLoanForAsset: (assetId: string, userId: string) => Promise<void>; // 👈 NUEVO
   returnLoan: (loanId: string) => Promise<void>;
   getAssetById: (assetId: string) => Asset | null;
   getActiveLoanForAsset: (assetId: string) => Loan | null;
@@ -108,26 +109,33 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
   },
 
   createMockLoan: async (userId) => {
-    const { assets, loans } = get();
+    const { assets } = get();
 
     const candidate = assets.find((a) => a.status === ASSET_AVAILABLE);
     if (!candidate) return;
+
+    await get().createMockLoanForAsset(candidate.id, userId);
+  },
+
+    createMockLoanForAsset: async (assetId, userId) => {
+    const { assets, loans } = get();
+
+    const asset = assets.find((a) => a.id === assetId);
+    if (!asset || asset.status !== ASSET_AVAILABLE) return;
 
     const now = new Date().toISOString();
 
     const loan: Loan = {
       id: `ln-${Date.now()}`,
-      assetId: candidate.id,
+      assetId,
       userId,
       startISO: now,
       endISO: null,
       status: LOAN_ACTIVE,
     };
-
     const updatedLoans: Loan[] = [loan, ...loans];
-
     const updatedAssets: Asset[] = assets.map((a) =>
-      a.id === candidate.id ? { ...a, status: ASSET_LOANED } : a,
+      a.id === assetId ? { ...a, status: ASSET_LOANED } : a,
     );
 
     await Promise.all([

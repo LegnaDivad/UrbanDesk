@@ -63,10 +63,12 @@ export default function SpaceBuilderAdminIndex() {
     if (!config) return;
 
     const areaId = config.areas[0]?.id ?? uid('area');
-    const areas = config.areas.length > 0 ? config.areas : [{ id: areaId, name: 'Área 1' }];
+    const areas =
+      config.areas.length > 0 ? config.areas : [{ id: areaId, name: 'Área 1' }];
 
     // Evita depender de strings específicos del union SpaceType:
-    const fallbackType = (config.spaces[0]?.type ?? ('desk' as unknown)) as WorkspaceConfig['spaces'][number]['type'];
+    const fallbackType = (config.spaces[0]?.type ??
+      ('desk' as unknown)) as WorkspaceConfig['spaces'][number]['type'];
 
     const next: WorkspaceConfig = {
       ...config,
@@ -90,20 +92,29 @@ export default function SpaceBuilderAdminIndex() {
     <ScrollView contentContainerClassName="flex-grow px-6 py-6 gap-4">
       <View className="flex-row items-center justify-between">
         <Text className="text-base">Space Builder (Admin)</Text>
-        <Pressable className="rounded-xl bg-neutral-200 px-4 py-2" onPress={() => router.back()}>
+        <Pressable
+          className="rounded-xl bg-neutral-200 px-4 py-2"
+          onPress={() => {
+            if (router.canGoBack()) router.back();
+            else router.replace('/(app)/reservas');
+          }}
+        >
           <Text>Volver</Text>
         </Pressable>
       </View>
-
       <Text className="text-sm">status: {status}</Text>
       <Text className="text-sm">config: {config ? 'present' : 'missing'}</Text>
       <Text className="text-sm">dirty: {isDirty ? 'yes' : 'no'}</Text>
-
       {!config ? (
         <View className="gap-2">
-          <Text className="text-sm">No hay configuración. Genera una default y guárdala.</Text>
+          <Text className="text-sm">
+            No hay configuración. Genera una default y guárdala.
+          </Text>
 
-          <Pressable className="rounded-xl bg-neutral-200 px-4 py-3" onPress={seedDefault}>
+          <Pressable
+            className="rounded-xl bg-neutral-200 px-4 py-3"
+            onPress={seedDefault}
+          >
             <Text className="text-center">Seed default config</Text>
           </Pressable>
 
@@ -121,7 +132,9 @@ export default function SpaceBuilderAdminIndex() {
             <Text className="text-sm">Resumen</Text>
             <Text className="text-xs text-neutral-600">version: {summary?.version}</Text>
             <Text className="text-xs text-neutral-600">areas: {summary?.areas}</Text>
-            <Text className="text-xs text-neutral-600">services: {summary?.services}</Text>
+            <Text className="text-xs text-neutral-600">
+              services: {summary?.services}
+            </Text>
             <Text className="text-xs text-neutral-600">spaces: {summary?.spaces}</Text>
           </View>
 
@@ -129,7 +142,10 @@ export default function SpaceBuilderAdminIndex() {
             <Pressable className="rounded-xl bg-neutral-200 px-4 py-3" onPress={addArea}>
               <Text className="text-center">+ Área</Text>
             </Pressable>
-            <Pressable className="rounded-xl bg-neutral-200 px-4 py-3" onPress={addService}>
+            <Pressable
+              className="rounded-xl bg-neutral-200 px-4 py-3"
+              onPress={addService}
+            >
               <Text className="text-center">+ Servicio</Text>
             </Pressable>
             <Pressable className="rounded-xl bg-neutral-200 px-4 py-3" onPress={addSpace}>
@@ -144,7 +160,10 @@ export default function SpaceBuilderAdminIndex() {
               <Text className="text-white text-center">Guardar cambios</Text>
             </Pressable>
 
-            <Pressable className="rounded-xl bg-neutral-200 px-4 py-3" onPress={() => void hydrate()}>
+            <Pressable
+              className="rounded-xl bg-neutral-200 px-4 py-3"
+              onPress={() => void hydrate()}
+            >
               <Text className="text-center">Recargar desde storage</Text>
             </Pressable>
           </View>
@@ -182,7 +201,6 @@ export default function SpaceBuilderAdminIndex() {
           </View>
         </>
       )}
-consider
     </ScrollView>
   );
 }
