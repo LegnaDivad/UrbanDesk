@@ -8,11 +8,13 @@ export interface Space {
 }
 
 
+export type BookingStatus = 'active' | 'cancelled';
+
 export interface Booking {
   id: string;
   spaceId: string;
   userId: string;
-  startISO: string; // ISO date-time
-  endISO: string;   // ISO date-time
+  startISO: string;
+  endISO: string;
+  status: BookingStatus;
 }
-

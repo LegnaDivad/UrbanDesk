@@ -8,7 +8,13 @@ export function overlaps(aStart: string, aEnd: string, bStart: string, bEnd: str
   return aS < bE && bS < aE;
 }
 
-export function canBook(spaceId: string, startISO: string, endISO: string, bookings: Booking[]): boolean {
-  return !bookings.some((b) => b.spaceId === spaceId && overlaps(startISO, endISO, b.startISO, b.endISO));
+export function canBook(
+  spaceId: string,
+  startISO: string,
+  endISO: string,
+  bookings: Booking[],
+): boolean {
+  const active = bookings.filter((b) => b.status !== 'cancelled');
+  return !active.some((b) => b.spaceId === spaceId && overlaps(startISO, endISO, b.startISO, b.endISO));
 }
 

@@ -16,6 +16,16 @@ function spacesFromConfig(config: WorkspaceConfig | null): Space[] {
   }));
 }
 
+type BookingInput = Omit<Booking, 'status'> & Partial<Pick<Booking, 'status'>>;
+
+function normalizeBookings(bookings: BookingInput[]): Booking[] {
+  return bookings.map((b) => ({
+    ...b,
+    status: b.status ?? 'active',
+  })) as Booking[];
+}
+
+
 export interface ReservasState {
   status: 'idle' | 'loading' | 'ready' | 'error';
   config: WorkspaceConfig | null;
@@ -51,13 +61,15 @@ export const useReservasStore = create<ReservasState>((set, get) => ({
   hydrate: async () => {
     set({ status: 'loading' });
     try {
-      const [config, bookings] = await Promise.all([
-      di.spaces.workspaceRepo.load(),
-      di.reservas.bookingRepo.load(),
-    ]);
-
+      const [config, rawBookings] = await Promise.all([
+        di.spaces.workspaceRepo.load(),
+        di.reservas.bookingRepo.load(),
+      ]);
 
       const spaces = spacesFromConfig(config);
+
+      const bookings = normalizeBookings((rawBookings ?? []) as any);
+
       set({
         status: 'ready',
         config,
@@ -77,7 +89,11 @@ export const useReservasStore = create<ReservasState>((set, get) => ({
 
   cancelBooking: async (bookingId) => {
     const { bookings } = get();
-    const updated = bookings.filter((b) => b.id !== bookingId);
+
+    const updated = bookings.map((b) =>
+      b.id === bookingId ? { ...b, status: 'cancelled' as const } : b,
+    );
+
     await di.reservas.bookingRepo.save(updated);
     set({ bookings: updated });
   },
@@ -103,6 +119,7 @@ export const useReservasStore = create<ReservasState>((set, get) => ({
       userId,
       startISO,
       endISO,
+      status: 'active',
     };
 
     const updated = [next, ...bookings];
