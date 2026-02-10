@@ -3,48 +3,8 @@ import { create } from 'zustand';
 import { di } from '@/di';
 import type {
   AppNotification,
-  NotificationMeta,
   NotificationPayload,
 } from '@/features/notifications/domain/notifications.types';
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-}
-
-function isValidPayload(value: unknown): value is NotificationPayload {
-  if (!isRecord(value)) return false;
-  const kind = value.kind;
-  if (typeof kind !== 'string') return false;
-
-  if (kind === 'system') return true;
-
-  if (kind === 'booking_created' || kind === 'booking_cancelled') {
-    return typeof value.bookingId === 'string' && typeof value.spaceId === 'string';
-  }
-
-  if (kind === 'loan_created' || kind === 'loan_returned') {
-    return typeof value.loanId === 'string' && typeof value.assetId === 'string';
-  }
-
-  return false;
-}
-
-function sanitizeNotification(value: unknown): AppNotification | null {
-  if (!isRecord(value)) return null;
-
-  const id = typeof value.id === 'string' ? value.id : `nt-${Date.now()}`;
-  const title = typeof value.title === 'string' ? value.title : 'Notificación';
-  const body = typeof value.body === 'string' ? value.body : undefined;
-  const createdAtISO =
-    typeof value.createdAtISO === 'string' ? value.createdAtISO : new Date().toISOString();
-  const readAtISO =
-    value.readAtISO === null || typeof value.readAtISO === 'string' ? value.readAtISO : null;
-
-  const payload = isValidPayload(value.payload) ? value.payload : ({ kind: 'system' } as const);
-  const meta = isRecord(value.meta) ? (value.meta as NotificationMeta) : undefined;
-
-  return { id, title, body, createdAtISO, readAtISO, payload, meta };
-}
 
 type LoadStatus = 'idle' | 'loading' | 'ready' | 'error';
 
@@ -58,13 +18,16 @@ interface NotificationsState {
     title: string;
     body?: string;
     payload: NotificationPayload;
-    meta?: NotificationMeta;
+    meta?: AppNotification['meta'];
   }) => Promise<void>;
-  markRead: (id: string) => Promise<void>;
-  markUnread: (id: string) => Promise<void>;
-  markAllRead: () => Promise<void>;
-  clearAll: () => Promise<void>;
 
+  markRead: (id: string) => Promise<void>;
+  markAllRead: () => Promise<void>;
+
+  toggleRead: (id: string) => Promise<void>;
+  remove: (id: string) => Promise<void>;
+
+  clearAll: () => Promise<void>;
   unreadCount: () => number;
 }
 
@@ -75,27 +38,8 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
   hydrate: async () => {
     set({ status: 'loading' });
     try {
-      const raw = await di.notifications.notificationsRepo.load();
-      const needsMigration = (raw ?? []).some((n) => {
-        if (!isRecord(n)) return true;
-        if (!isValidPayload(n.payload)) return true;
-        if (typeof n.id !== 'string') return true;
-        if (typeof n.title !== 'string') return true;
-        if (typeof n.createdAtISO !== 'string') return true;
-        if (!(n.readAtISO === null || typeof n.readAtISO === 'string')) return true;
-        return false;
-      });
-
-      const sanitized = (raw ?? [])
-        .map((n) => sanitizeNotification(n))
-        .filter((n): n is AppNotification => Boolean(n));
-
-      set({ status: 'ready', items: sanitized });
-
-      // Persist best-effort migration if something was invalid.
-      if (needsMigration) {
-        void di.notifications.notificationsRepo.save(sanitized);
-      }
+      const items = await di.notifications.notificationsRepo.load();
+      set({ status: 'ready', items: items ?? [] });
     } catch {
       set({ status: 'error' });
     }
@@ -109,7 +53,7 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
       createdAtISO: new Date().toISOString(),
       readAtISO: null,
       payload,
-      meta,
+      meta: meta ?? undefined,
     };
 
     const updated = [next, ...get().items];
@@ -118,24 +62,10 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
   },
 
   markRead: async (id) => {
-    const { items } = get();
     const now = new Date().toISOString();
-
-    const updated = items.map((n) =>
+    const updated = get().items.map((n) =>
       n.id === id && !n.readAtISO ? { ...n, readAtISO: now } : n,
     );
-
-    await di.notifications.notificationsRepo.save(updated);
-    set({ items: updated });
-  },
-
-  markUnread: async (id) => {
-    const { items } = get();
-
-    const updated = items.map((n) =>
-      n.id === id && n.readAtISO ? { ...n, readAtISO: null } : n,
-    );
-
     await di.notifications.notificationsRepo.save(updated);
     set({ items: updated });
   },
@@ -143,6 +73,22 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
   markAllRead: async () => {
     const now = new Date().toISOString();
     const updated = get().items.map((n) => (n.readAtISO ? n : { ...n, readAtISO: now }));
+    await di.notifications.notificationsRepo.save(updated);
+    set({ items: updated });
+  },
+
+  toggleRead: async (id) => {
+    const now = new Date().toISOString();
+    const updated = get().items.map((n) => {
+      if (n.id !== id) return n;
+      return n.readAtISO ? { ...n, readAtISO: null } : { ...n, readAtISO: now };
+    });
+    await di.notifications.notificationsRepo.save(updated);
+    set({ items: updated });
+  },
+
+  remove: async (id) => {
+    const updated = get().items.filter((n) => n.id !== id);
     await di.notifications.notificationsRepo.save(updated);
     set({ items: updated });
   },

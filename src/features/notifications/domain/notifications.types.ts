@@ -12,27 +12,16 @@ export type NotificationPayload =
   | { kind: 'loan_returned'; loanId: string; assetId: string }
   | { kind: 'system' };
 
-export type NotificationActionKind = 'primary' | 'neutral' | 'danger';
-
-export interface NotificationAction {
+export type NotificationAction = {
   label: string;
   deepLink: string;
-  kind?: NotificationActionKind;
-}
+  kind?: 'primary' | 'neutral' | 'danger';
+};
 
-export interface NotificationMeta {
-  /**
-   * Deep link directo (string), ej:
-   * "/(app)/reservas?spaceId=sp-1&bookingId=bk-123"
-   * "/(app)/inventory/[assetId]?assetId=as-1"
-   */
+export type NotificationMeta = {
   deepLink?: string;
-
-  /**
-   * Acciones opcionales (CTA buttons) con deep links.
-   */
   actions?: NotificationAction[];
-}
+};
 
 export interface AppNotification {
   id: string;
@@ -41,9 +30,5 @@ export interface AppNotification {
   createdAtISO: string;
   readAtISO: string | null;
   payload: NotificationPayload;
-
-  /**
-   * v1.1
-   */
   meta?: NotificationMeta;
 }

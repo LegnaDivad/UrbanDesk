@@ -1,22 +1,24 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import {
+  Animated,
+  PanResponder,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from 'react-native';
 
-import { useInventoryStore } from '@/features/inventory';
 import { useNotificationsStore } from '@/features/notifications';
 import type {
   AppNotification,
   NotificationPayload,
 } from '@/features/notifications/domain/notifications.types';
-import { useReservasStore } from '@/features/reservas';
 import { Screen } from '@/ui/components/Screen';
 
-type RouteTarget =
-  | { pathname: '/(app)/reservas' }
-  | { pathname: '/(app)/inventory/[assetId]'; params: { assetId: string } };
-
-function routeForPayload(payload: NotificationPayload | null | undefined): RouteTarget | null {
-  if (!payload) return null;
+function fallbackRouteForPayload(
+  payload: NotificationPayload,
+): { pathname: string; params?: Record<string, string> } | null {
   switch (payload.kind) {
     case 'booking_created':
     case 'booking_cancelled':
@@ -35,26 +37,127 @@ function routeForPayload(payload: NotificationPayload | null | undefined): Route
   }
 }
 
-type ActionTone = 'primary' | 'neutral' | 'danger';
-
-function actionClasses(tone: ActionTone): { bg: string; fg: string } {
-  if (tone === 'primary') return { bg: 'bg-black', fg: 'text-white' };
-  if (tone === 'danger') return { bg: 'bg-neutral-700', fg: 'text-white' };
+function actionClasses(kind?: 'primary' | 'neutral' | 'danger'): { bg: string; fg: string } {
+  if (kind === 'primary') return { bg: 'bg-black', fg: 'text-white' };
+  if (kind === 'danger') return { bg: 'bg-neutral-700', fg: 'text-white' };
   return { bg: 'bg-neutral-200', fg: 'text-black' };
 }
 
-function primaryLabelForPayload(payload: NotificationPayload | null | undefined): string {
-  if (!payload) return 'Abrir';
-  switch (payload.kind) {
-    case 'booking_created':
-    case 'booking_cancelled':
-      return 'Ver reservas';
-    case 'loan_created':
-    case 'loan_returned':
-      return 'Ver asset';
-    default:
-      return 'Abrir';
-  }
+function SwipeNotificationRow(props: {
+  n: AppNotification;
+  onOpen: (n: AppNotification) => void;
+  onToggleRead: (id: string) => void;
+  onRemove: (id: string) => void;
+  onOpenDeepLink: (deepLink: string, notificationId: string) => void;
+}) {
+  const { n, onOpen, onToggleRead, onRemove, onOpenDeepLink } = props;
+
+  const translateX = useMemo(() => new Animated.Value(0), []);
+
+  const THRESHOLD = 90;
+  const MAX = 140;
+
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_, g) => {
+          const dx = Math.abs(g.dx);
+          const dy = Math.abs(g.dy);
+          return dx > 8 && dy < 10;
+        },
+        onPanResponderMove: (_, g) => {
+          const clamped = Math.max(-MAX, Math.min(MAX, g.dx));
+          translateX.setValue(clamped);
+        },
+        onPanResponderRelease: (_, g) => {
+          const dx = g.dx;
+
+          if (dx >= THRESHOLD) onToggleRead(n.id);
+          if (dx <= -THRESHOLD) onRemove(n.id);
+
+          Animated.spring(translateX, {
+            toValue: 0,
+            useNativeDriver: true,
+            speed: 30,
+            bounciness: 0,
+          }).start();
+        },
+        onPanResponderTerminate: () => {
+          Animated.spring(translateX, {
+            toValue: 0,
+            useNativeDriver: true,
+            speed: 30,
+            bounciness: 0,
+          }).start();
+        },
+      }),
+    [n.id, onRemove, onToggleRead, translateX],
+  );
+
+  const isUnread = !n.readAtISO;
+
+  const leftLabel = isUnread ? 'Marcar leída' : 'Marcar no leída';
+  const rightLabel = 'Borrar';
+
+  const actions = n.meta?.actions ?? [];
+
+  return (
+    <View className="rounded-2xl overflow-hidden">
+      {/* underlay */}
+      <View className="absolute inset-0 flex-row">
+        <View className="flex-1 justify-center pl-4 bg-neutral-300">
+          <Text className="text-xs">{leftLabel}</Text>
+        </View>
+        <View className="flex-1 justify-center items-end pr-4 bg-neutral-400">
+          <Text className="text-xs text-white">{rightLabel}</Text>
+        </View>
+      </View>
+
+      {/* foreground */}
+      <Animated.View
+        style={{ transform: [{ translateX }] }}
+        {...panResponder.panHandlers}
+      >
+        <View className={`rounded-2xl px-4 py-3 ${isUnread ? 'bg-neutral-200' : 'bg-neutral-100'}`}>
+          <Pressable onPress={() => onOpen(n)}>
+            <View className="flex-row items-start justify-between gap-3">
+              <View className="flex-1">
+                <Text className={`text-sm ${isUnread ? 'font-semibold' : ''}`}>
+                  {n.title}
+                </Text>
+
+                {n.body ? <Text className="text-xs text-neutral-700">{n.body}</Text> : null}
+
+                <Text className="text-[10px] text-neutral-600 mt-1">
+                  {new Date(n.createdAtISO).toLocaleString()} {isUnread ? '• NUEVA' : ''}
+                </Text>
+              </View>
+
+              <Text className="text-xs text-neutral-700">›</Text>
+            </View>
+          </Pressable>
+
+          {actions.length ? (
+            <View className="flex-row flex-wrap gap-2 mt-3">
+              {actions.map((a, idx) => {
+                const { bg, fg } = actionClasses(a.kind);
+
+                return (
+                  <Pressable
+                    key={`${n.id}-action-${idx}`}
+                    className={`rounded-xl px-3 py-2 ${bg}`}
+                    onPress={() => onOpenDeepLink(a.deepLink, n.id)}
+                  >
+                    <Text className={`text-xs ${fg}`}>{a.label}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          ) : null}
+        </View>
+      </Animated.View>
+    </View>
+  );
 }
 
 export default function NotificationsIndex() {
@@ -65,9 +168,11 @@ export default function NotificationsIndex() {
 
   const hydrate = useNotificationsStore((s) => s.hydrate);
   const markRead = useNotificationsStore((s) => s.markRead);
-  const markUnread = useNotificationsStore((s) => s.markUnread);
   const markAllRead = useNotificationsStore((s) => s.markAllRead);
   const clearAll = useNotificationsStore((s) => s.clearAll);
+
+  const toggleRead = useNotificationsStore((s) => s.toggleRead);
+  const remove = useNotificationsStore((s) => s.remove);
 
   const unread = useMemo(() => items.filter((n) => !n.readAtISO).length, [items]);
 
@@ -75,67 +180,24 @@ export default function NotificationsIndex() {
     void hydrate();
   }, [hydrate]);
 
-  const navigateToTarget = (target: RouteTarget) => {
-    if (target.pathname === '/(app)/reservas') {
-      router.push(target.pathname as any);
+  const onOpenNotification = (n: AppNotification) => {
+    void markRead(n.id);
+
+    const deepLink = n.meta?.deepLink;
+    if (deepLink) {
+      router.push(deepLink as any);
       return;
     }
 
-    router.push({
-      pathname: target.pathname as any,
-      params: target.params,
-    });
-  };
-
-  const onOpenNotification = async (n: AppNotification) => {
-    await markRead(n.id);
-
-    const target = routeForPayload(n.payload);
-    if (target) navigateToTarget(target);
-  };
-
-  const onMarkReadOnly = async (n: AppNotification) => {
-    await markRead(n.id);
-  };
-
-  const onMarkUnreadOnly = async (n: AppNotification) => {
-    await markUnread(n.id);
-  };
-
-  const onCancelBookingFromNotification = async (
-    n: AppNotification,
-    payload: Extract<NotificationPayload, { kind: 'booking_created' }>,
-  ) => {
-    await markRead(n.id);
-
-    try {
-      await useReservasStore.getState().hydrate();
-      await useReservasStore.getState().cancelBooking(payload.bookingId);
-    } catch {
-      await useNotificationsStore.getState().push({
-        title: 'No se pudo cancelar',
-        body: `Reserva: ${payload.bookingId}`,
-        payload: { kind: 'system' },
-      });
+    const fallback = fallbackRouteForPayload(n.payload);
+    if (fallback) {
+      router.push({ pathname: fallback.pathname as any, params: fallback.params });
     }
   };
 
-  const onReturnLoanFromNotification = async (
-    n: AppNotification,
-    payload: Extract<NotificationPayload, { kind: 'loan_created' }>,
-  ) => {
-    await markRead(n.id);
-
-    try {
-      await useInventoryStore.getState().hydrate();
-      await useInventoryStore.getState().returnLoan(payload.loanId);
-    } catch {
-      await useNotificationsStore.getState().push({
-        title: 'No se pudo devolver',
-        body: `Préstamo: ${payload.loanId}`,
-        payload: { kind: 'system' },
-      });
-    }
+  const onOpenDeepLink = (deepLink: string, notificationId: string) => {
+    void markRead(notificationId);
+    router.push(deepLink as any);
   };
 
   return (
@@ -151,9 +213,7 @@ export default function NotificationsIndex() {
 
           <View className="flex-row gap-2">
             <Pressable
-              className={`rounded-xl px-3 py-2 ${
-                items.length ? 'bg-neutral-200' : 'bg-neutral-100'
-              }`}
+              className={`rounded-xl px-3 py-2 ${items.length ? 'bg-neutral-200' : 'bg-neutral-100'}`}
               disabled={!items.length}
               onPress={() => void markAllRead()}
             >
@@ -161,9 +221,7 @@ export default function NotificationsIndex() {
             </Pressable>
 
             <Pressable
-              className={`rounded-xl px-3 py-2 ${
-                items.length ? 'bg-neutral-200' : 'bg-neutral-100'
-              }`}
+              className={`rounded-xl px-3 py-2 ${items.length ? 'bg-neutral-200' : 'bg-neutral-100'}`}
               disabled={!items.length}
               onPress={() => void clearAll()}
             >
@@ -183,108 +241,16 @@ export default function NotificationsIndex() {
           </View>
         ) : (
           <View className="gap-2">
-            {items.map((n) => {
-              const isUnread = !n.readAtISO;
-              const payload = (n as unknown as { payload?: NotificationPayload }).payload;
-              const target = routeForPayload(payload);
-              const hasNav = Boolean(target);
-
-              const actions: {
-                label: string;
-                tone: ActionTone;
-                onPress: () => void;
-              }[] = [];
-
-              if (hasNav) {
-                actions.push({
-                  label: primaryLabelForPayload(payload),
-                  tone: 'primary',
-                  onPress: () => void onOpenNotification(n),
-                });
-              }
-
-              if (isUnread) {
-                actions.push({
-                  label: 'Marcar leída',
-                  tone: 'neutral',
-                  onPress: () => void onMarkReadOnly(n),
-                });
-              } else {
-                actions.push({
-                  label: 'Marcar no leída',
-                  tone: 'neutral',
-                  onPress: () => void onMarkUnreadOnly(n),
-                });
-              }
-
-              if (payload?.kind === 'booking_created') {
-                const bookingPayload = payload;
-                actions.push({
-                  label: 'Cancelar',
-                  tone: 'danger',
-                  onPress: () => void onCancelBookingFromNotification(n, bookingPayload),
-                });
-              }
-
-              if (payload?.kind === 'loan_created') {
-                const loanPayload = payload;
-                actions.push({
-                  label: 'Devolver',
-                  tone: 'neutral',
-                  onPress: () => void onReturnLoanFromNotification(n, loanPayload),
-                });
-              }
-
-              return (
-                <View
-                  key={n.id}
-                  className={`rounded-2xl px-4 py-3 ${
-                    isUnread ? 'bg-neutral-200' : 'bg-neutral-100'
-                  }`}
-                >
-                  <Pressable onPress={() => void onOpenNotification(n)}>
-                    <View className="flex-row items-start justify-between gap-3">
-                      <View className="flex-1">
-                        <Text className={`text-sm ${isUnread ? 'font-semibold' : ''}`}>
-                          {n.title}
-                        </Text>
-
-                        {n.body ? (
-                          <Text className="text-xs text-neutral-700">{n.body}</Text>
-                        ) : null}
-
-                        <Text className="text-[10px] text-neutral-600 mt-1">
-                          {new Date(n.createdAtISO).toLocaleString()}{' '}
-                          {isUnread ? '• NUEVA' : ''}
-                        </Text>
-                      </View>
-
-                      {hasNav ? (
-                        <Text className="text-xs text-neutral-700">›</Text>
-                      ) : null}
-                    </View>
-                  </Pressable>
-
-                  {actions.length ? (
-                    <View className="flex-row flex-wrap gap-2 mt-3">
-                      {actions.map((a, idx) => {
-                        const { bg, fg } = actionClasses(a.tone);
-
-                        return (
-                          <Pressable
-                            key={`${n.id}-action-${idx}`}
-                            className={`rounded-xl px-3 py-2 ${bg}`}
-                            onPress={a.onPress}
-                          >
-                            <Text className={`text-xs ${fg}`}>{a.label}</Text>
-                          </Pressable>
-                        );
-                      })}
-                    </View>
-                  ) : null}
-                </View>
-              );
-            })}
+            {items.map((n) => (
+              <SwipeNotificationRow
+                key={n.id}
+                n={n}
+                onOpen={onOpenNotification}
+                onToggleRead={(id) => void toggleRead(id)}
+                onRemove={(id) => void remove(id)}
+                onOpenDeepLink={onOpenDeepLink}
+              />
+            ))}
           </View>
         )}
       </ScrollView>
