@@ -4,7 +4,18 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { useSessionStore } from '@/features/auth';
 import { useInventoryStore } from '@/features/inventory';
-
+import {
+  AppHeader,
+  Button,
+  Card,
+  Chip,
+  Content,
+  EmptyState,
+  ErrorState,
+  LoadingState,
+  Screen,
+  Section,
+} from '@/ui';
 
 export default function InventoryIndex() {
   const router = useRouter();
@@ -53,8 +64,6 @@ export default function InventoryIndex() {
   }, [assets, categoryFilter, statusFilter]);
 
   // User loans (all + active)
-  const myLoans = useMemo(() => loans.filter((l) => l.userId === userId), [loans, userId]);
-
   const myActiveLoans = useMemo(
     () => loans.filter((l) => l.userId === userId && l.status === 'active'),
     [loans, userId],
@@ -63,125 +72,152 @@ export default function InventoryIndex() {
   const lastMyActiveLoanId = myActiveLoans[0]?.id ?? null;
 
   return (
-    <ScrollView contentContainerClassName="flex-grow px-6 py-6 gap-4">
-      <Text className="text-base">Inventario (MVP)</Text>
-      <Text className="text-sm">status: {status}</Text>
+    <Screen>
+      <ScrollView contentContainerClassName="flex-grow px-6 py-6 gap-5">
+        <Content className="gap-5">
+          <AppHeader
+            title="Inventario"
+            subtitle={`${assets.length} activos • ${myActiveLoans.length} préstamos activos míos`}
+          />
 
-      <View className="gap-1">
-        <Text className="text-sm">assets: {assets.length}</Text>
-        <Text className="text-sm">loans: {loans.length}</Text>
-        <Text className="text-sm">my loans: {myLoans.length}</Text>
-        <Text className="text-sm">my active loans: {myActiveLoans.length}</Text>
-      </View>
+          {status === 'idle' || status === 'loading' ? (
+            <LoadingState lines={4} />
+          ) : status === 'error' ? (
+            <ErrorState
+              title="No se pudo cargar inventario"
+              description="Vuelve a intentar hidratar el módulo."
+              onRetry={() => void hydrate()}
+            />
+          ) : assets.length === 0 ? (
+            <EmptyState
+              title="Aún no hay activos"
+              description="Crea datos mock para empezar a probar el flujo."
+              actionLabel="Seed mock assets"
+              onAction={() => void seedMockAssets()}
+            />
+          ) : (
+            <>
+              <Section title="Acciones">
+                <View className="gap-2">
+                  <Button
+                    label="Seed mock assets"
+                    onPress={() => void seedMockAssets()}
+                  />
+                  <Button
+                    variant="primary"
+                    label="Crear préstamo (mock)"
+                    onPress={() => void createMockLoan(userId)}
+                  />
+                  <Button
+                    label="Devolver mi último préstamo activo"
+                    disabled={!lastMyActiveLoanId}
+                    onPress={() =>
+                      lastMyActiveLoanId && void returnLoan(lastMyActiveLoanId)
+                    }
+                  />
+                </View>
+              </Section>
 
-      {/* Actions */}
-      <View className="gap-2">
-        <Pressable
-          className="rounded-xl bg-neutral-200 px-4 py-3"
-          onPress={() => void seedMockAssets()}
-        >
-          <Text className="text-center">Seed mock assets</Text>
-        </Pressable>
+              <Section title="Filtros" subtitle="Refina por categoría y estado">
+                <Card className="gap-3">
+                  <View className="gap-2">
+                    <Text className="text-xs font-semibold text-neutral-700">
+                      Categoría
+                    </Text>
+                    <View className="flex-row flex-wrap gap-2">
+                      {categoryOptions.map((opt) => (
+                        <Chip
+                          key={opt}
+                          label={opt}
+                          active={categoryFilter === opt}
+                          onPress={() => setCategoryFilter(opt)}
+                        />
+                      ))}
+                    </View>
+                  </View>
 
-        <Pressable
-          className="rounded-xl bg-black px-4 py-3"
-          onPress={() => void createMockLoan(userId)}
-        >
-          <Text className="text-white text-center">Crear préstamo mock</Text>
-        </Pressable>
+                  <View className="gap-2">
+                    <Text className="text-xs font-semibold text-neutral-700">Estado</Text>
+                    <View className="flex-row flex-wrap gap-2">
+                      {statusOptions.map((opt) => (
+                        <Chip
+                          key={opt}
+                          label={opt}
+                          active={statusFilter === opt}
+                          onPress={() => setStatusFilter(opt)}
+                        />
+                      ))}
+                    </View>
+                  </View>
+                </Card>
+              </Section>
 
-        <Pressable
-          className={`rounded-xl px-4 py-3 ${lastMyActiveLoanId ? 'bg-neutral-200' : 'bg-neutral-100'}`}
-          disabled={!lastMyActiveLoanId}
-          onPress={() => lastMyActiveLoanId && void returnLoan(lastMyActiveLoanId)}
-        >
-          <Text className="text-center">Regresar mi último préstamo activo</Text>
-        </Pressable>
-      </View>
+              <Section
+                title="Activos"
+                subtitle={`${filteredAssets.length} de ${assets.length}`}
+              >
+                {filteredAssets.length === 0 ? (
+                  <EmptyState
+                    title="Sin resultados"
+                    description="Ajusta los filtros para ver activos."
+                  />
+                ) : (
+                  <View className="gap-2">
+                    {filteredAssets.map((a) => {
+                      const activeLoan = getActiveLoanForAsset(a.id);
 
-      {/* Filters */}
-      <View className="gap-2">
-        <Text className="text-sm">Filtro categoría</Text>
-        <View className="flex-row flex-wrap gap-2">
-          {categoryOptions.map((opt) => (
-            <Pressable
-              key={opt}
-              className={`rounded-full px-3 py-2 ${categoryFilter === opt ? 'bg-black' : 'bg-neutral-200'}`}
-              onPress={() => setCategoryFilter(opt)}
-            >
-              <Text className={`${categoryFilter === opt ? 'text-white' : 'text-black'}`}>
-                {opt}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-      </View>
+                      return (
+                        <Pressable
+                          key={a.id}
+                          className="rounded-2xl bg-neutral-100 px-4 py-3 gap-1"
+                          onPress={() =>
+                            router.push({
+                              pathname: '/(app)/inventory/[assetId]',
+                              params: { assetId: a.id },
+                            })
+                          }
+                        >
+                          <View className="flex-row items-start justify-between gap-3">
+                            <View className="flex-1">
+                              <Text className="text-sm text-neutral-900">{a.name}</Text>
+                              <Text className="text-xs text-neutral-600 mt-0.5">
+                                {a.category} • {a.status}
+                              </Text>
+                            </View>
+                            <Text className="text-xs text-neutral-700">›</Text>
+                          </View>
 
-      <View className="gap-2">
-        <Text className="text-sm">Filtro status</Text>
-        <View className="flex-row flex-wrap gap-2">
-          {statusOptions.map((opt) => (
-            <Pressable
-              key={opt}
-              className={`rounded-full px-3 py-2 ${statusFilter === opt ? 'bg-black' : 'bg-neutral-200'}`}
-              onPress={() => setStatusFilter(opt)}
-            >
-              <Text className={`${statusFilter === opt ? 'text-white' : 'text-black'}`}>
-                {opt}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-      </View>
+                          {activeLoan ? (
+                            <Text className="text-xs text-neutral-600 mt-1">
+                              Prestado a: {activeLoan.userId} •{' '}
+                              {new Date(activeLoan.startISO).toLocaleString()}
+                            </Text>
+                          ) : null}
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                )}
+              </Section>
 
-      {/* Assets list with active loan info */}
-      <View className="gap-2">
-        <Text className="text-sm">Assets</Text>
-
-        {filteredAssets.map((a) => {
-  const activeLoan = getActiveLoanForAsset(a.id);
-
-  return (
-    <Pressable
-      key={a.id}
-      className="rounded-xl bg-neutral-100 px-4 py-3 gap-1"
-      onPress={() =>
-        router.push({
-          pathname: '/(app)/inventory/[assetId]',
-          params: { assetId: a.id },
-        })
-      }
-    >
-      <Text className="text-sm">{a.name}</Text>
-      <Text className="text-xs text-neutral-600">
-        {a.category} • {a.status}
-      </Text>
-
-      {activeLoan ? (
-        <Text className="text-xs text-neutral-600">
-          Prestado a: {activeLoan.userId} • {new Date(activeLoan.startISO).toLocaleString()}
-        </Text>
-      ) : null}
-    </Pressable>
-  );
-})}
-
-      </View>
-
-      {/* Loans list (debug / MVP) */}
-      <View className="gap-2">
-        <Text className="text-sm">Loans</Text>
-        {loans.slice(0, 10).map((l) => (
-          <View key={l.id} className="rounded-xl bg-neutral-100 px-4 py-3">
-            <Text className="text-xs">
-              {l.assetId} • {l.userId}
-            </Text>
-            <Text className="text-xs text-neutral-600">
-              {l.status} • {new Date(l.startISO).toLocaleString()}
-            </Text>
-          </View>
-        ))}
-      </View>
-    </ScrollView>
+              <Section title="Préstamos" subtitle="Debug (últimos 10)">
+                <View className="gap-2">
+                  {loans.slice(0, 10).map((l) => (
+                    <Card key={l.id} className="px-4 py-3">
+                      <Text className="text-xs text-neutral-900">
+                        {l.assetId} • {l.userId}
+                      </Text>
+                      <Text className="text-xs text-neutral-600 mt-0.5">
+                        {l.status} • {new Date(l.startISO).toLocaleString()}
+                      </Text>
+                    </Card>
+                  ))}
+                </View>
+              </Section>
+            </>
+          )}
+        </Content>
+      </ScrollView>
+    </Screen>
   );
 }

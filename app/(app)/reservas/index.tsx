@@ -4,6 +4,17 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { useSessionStore } from '@/features/auth';
 import { useReservasStore } from '@/features/reservas';
+import {
+  AppHeader,
+  Button,
+  Card,
+  Content,
+  EmptyState,
+  ErrorState,
+  LoadingState,
+  Screen,
+  Section,
+} from '@/ui';
 
 function firstParam(v: string | string[] | undefined): string | undefined {
   return Array.isArray(v) ? v[0] : v;
@@ -11,7 +22,10 @@ function firstParam(v: string | string[] | undefined): string | undefined {
 
 export default function ReservasIndex() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ spaceId?: string | string[]; bookingId?: string | string[] }>();
+  const params = useLocalSearchParams<{
+    spaceId?: string | string[];
+    bookingId?: string | string[];
+  }>();
 
   const deepLinkSpaceId = firstParam(params.spaceId) ?? null;
   const deepLinkBookingId = firstParam(params.bookingId) ?? null;
@@ -79,137 +93,206 @@ export default function ReservasIndex() {
 
   const openedFromNotification = Boolean(deepLinkSpaceId || deepLinkBookingId);
 
-  if (status === 'loading') return null;
-
   return (
-    <ScrollView contentContainerClassName="flex-grow px-6 py-6 gap-3">
-      <View className="flex-1 justify-center gap-3">
-        <Text className="text-base">Reservas (MVP)</Text>
+    <Screen>
+      <ScrollView contentContainerClassName="flex-grow px-6 py-6 gap-5">
+        <Content className="gap-5">
+          <AppHeader
+            title="Reservas"
+            subtitle={`${myBookingsCount} mías • ${bookings.length} total`}
+            right={
+              role === 'admin' ? (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  label="Admin"
+                  onPress={() => router.push('/(admin)/space-builder')}
+                />
+              ) : null
+            }
+          />
 
-        {openedFromNotification ? (
-          <View className="rounded-2xl bg-neutral-100 px-4 py-3">
-            <Text className="text-xs text-neutral-700">
-              Abierto desde notificación
-              {deepLinkSpaceId ? ` • spaceId: ${deepLinkSpaceId}` : ''}
-              {deepLinkBookingId ? ` • bookingId: ${deepLinkBookingId}` : ''}
-            </Text>
-          </View>
-        ) : null}
+          {openedFromNotification ? (
+            <Card className="gap-1">
+              <Text className="text-xs text-neutral-700">
+                Abierto desde notificación
+                {deepLinkSpaceId ? ` • spaceId: ${deepLinkSpaceId}` : ''}
+                {deepLinkBookingId ? ` • bookingId: ${deepLinkBookingId}` : ''}
+              </Text>
+            </Card>
+          ) : null}
 
-        <Text className="text-sm">status: {status}</Text>
-        <Text className="text-sm">workspace config: {config ? 'present' : 'missing'}</Text>
-
-        <Text className="text-sm">spaces: {spaces.length}</Text>
-        <Text className="text-sm">bookings: {bookings.length}</Text>
-
-        {spaces.length > 0 ? (
-          <>
-            <Text className="text-sm">selected: {selectedSpaceId}</Text>
-
-            <View className="gap-2">
-              <Text className="text-sm">bookings (total): {bookings.length}</Text>
-              <Text className="text-sm">bookings (selected space): {selectedBookingsCount}</Text>
-              <Text className="text-sm">bookings (mine): {myBookingsCount}</Text>
-              <Text className="text-sm">Mis reservas (últimas 5): {myBookings.length}</Text>
-              <Text className="text-sm">start: {new Date(bookingStartISO).toLocaleString()}</Text>
-              <Text className="text-sm">duration: {durationMinutes} min</Text>
-
-              <View className="flex-row gap-2">
-                <Pressable
-                  className="rounded-xl bg-neutral-200 px-4 py-3"
-                  onPress={() => {
-                    const d = new Date(bookingStartISO);
-                    d.setMinutes(d.getMinutes() - 15);
-                    setBookingStartISO(d.toISOString());
-                  }}
-                >
-                  <Text>−15m</Text>
-                </Pressable>
-
-                <Pressable
-                  className="rounded-xl bg-neutral-200 px-4 py-3"
-                  onPress={() => {
-                    const d = new Date(bookingStartISO);
-                    d.setMinutes(d.getMinutes() + 15);
-                    setBookingStartISO(d.toISOString());
-                  }}
-                >
-                  <Text>+15m</Text>
-                </Pressable>
-
-                <Pressable
-                  className="rounded-xl bg-neutral-200 px-4 py-3"
-                  onPress={() => setDurationMinutes(durationMinutes === 60 ? 30 : 60)}
-                >
-                  <Text>{durationMinutes === 60 ? '60→30' : '30→60'}</Text>
-                </Pressable>
-              </View>
-
-              {myBookings.map((b) => (
-                <View key={b.id} className="flex-row items-center justify-between">
-                  <Text className="text-xs">
-                    {b.spaceId} • {new Date(b.startISO).toLocaleString()} • {b.status}
+          {status === 'idle' || status === 'loading' ? (
+            <LoadingState lines={4} />
+          ) : status === 'error' ? (
+            <ErrorState
+              title="No se pudieron cargar las reservas"
+              description="Revisa tu storage o vuelve a intentar."
+              onRetry={() => void hydrate()}
+            />
+          ) : spaces.length === 0 ? (
+            <EmptyState
+              title="Aún no hay espacios configurados"
+              description="Si eres admin, crea y guarda una configuración en Space Builder."
+              actionLabel={role === 'admin' ? 'Ir a Space Builder' : undefined}
+              onAction={
+                role === 'admin'
+                  ? () => {
+                      router.push('/(admin)/space-builder');
+                    }
+                  : undefined
+              }
+            />
+          ) : (
+            <>
+              <Section
+                title="Horario"
+                subtitle={`${new Date(bookingStartISO).toLocaleString()} • ${durationMinutes} min`}
+                right={
+                  <Text className="text-xs text-neutral-600">
+                    {selectedBookingsCount} en este espacio
                   </Text>
-
-                  {b.status === 'active' ? (
-                    <Pressable
-                      className="rounded-lg bg-neutral-200 px-3 py-2"
-                      onPress={() => void cancelBooking(b.id)}
-                    >
-                      <Text className="text-xs">Cancelar</Text>
-                    </Pressable>
-                  ) : null}
-                </View>
-              ))}
-
-              {Object.entries(grouped).map(([groupKey, list]) => (
-                <View key={groupKey} className="gap-2">
-                  <Text className="text-sm">{groupKey}</Text>
-
-                  {list.map((s) => {
-                    const occupied = isSpaceOccupied(s.id);
-
-                    return (
-                      <Pressable
-                        key={s.id}
-                        className={`rounded-xl px-4 py-3 ${
-                          selectedSpaceId === s.id
-                            ? 'bg-black'
-                            : occupied
-                              ? 'bg-neutral-300'
-                              : 'bg-neutral-200'
-                        }`}
-                        onPress={() => selectSpace(s.id)}
-                      >
-                        <Text className={`${selectedSpaceId === s.id ? 'text-white' : 'text-black'}`}>
-                          {s.name} ({s.type}) {occupied ? '• Ocupado' : ''}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              ))}
-            </View>
-
-            {role === 'admin' ? (
-              <Pressable
-                className="rounded-xl bg-neutral-200 px-4 py-3"
-                onPress={() => router.push('/(admin)/space-builder')}
+                }
               >
-                <Text className="text-center">Ir a Space Builder (Admin)</Text>
-              </Pressable>
-            ) : null}
+                <View className="flex-row gap-2">
+                  <Button
+                    size="sm"
+                    label="−15m"
+                    onPress={() => {
+                      const d = new Date(bookingStartISO);
+                      d.setMinutes(d.getMinutes() - 15);
+                      setBookingStartISO(d.toISOString());
+                    }}
+                  />
+                  <Button
+                    size="sm"
+                    label="+15m"
+                    onPress={() => {
+                      const d = new Date(bookingStartISO);
+                      d.setMinutes(d.getMinutes() + 15);
+                      setBookingStartISO(d.toISOString());
+                    }}
+                  />
+                  <Button
+                    size="sm"
+                    label={durationMinutes === 60 ? '60→30' : '30→60'}
+                    onPress={() => setDurationMinutes(durationMinutes === 60 ? 30 : 60)}
+                  />
+                </View>
+              </Section>
 
-            <Pressable className="rounded-xl bg-black px-4 py-3" onPress={() => void createMockBooking(userId)}>
-              <Text className="text-white text-center">Crear reserva mock</Text>
-            </Pressable>
-          </>
-        ) : (
-          <Text className="text-sm">
-            No hay espacios. Entra como admin y crea/guarda una config default en Space Builder.
-          </Text>
-        )}
-      </View>
-    </ScrollView>
+              <Section title="Mis reservas" subtitle="Últimas 5">
+                {myBookings.length === 0 ? (
+                  <Card>
+                    <Text className="text-xs text-neutral-600">
+                      No tienes reservas todavía.
+                    </Text>
+                  </Card>
+                ) : (
+                  <View className="gap-2">
+                    {myBookings.map((b) => (
+                      <Card key={b.id} className="gap-2">
+                        <View className="flex-row items-start justify-between gap-3">
+                          <View className="flex-1">
+                            <Text className="text-sm text-neutral-900">{b.spaceId}</Text>
+                            <Text className="text-xs text-neutral-600 mt-0.5">
+                              {new Date(b.startISO).toLocaleString()} • {b.status}
+                            </Text>
+                          </View>
+                          {b.status === 'active' ? (
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              label="Cancelar"
+                              onPress={() => void cancelBooking(b.id)}
+                            />
+                          ) : null}
+                        </View>
+                      </Card>
+                    ))}
+                  </View>
+                )}
+              </Section>
+
+              <Section
+                title="Espacios"
+                subtitle={`Seleccionado: ${selectedSpaceId ?? '-'}`}
+              >
+                <View className="gap-3">
+                  {Object.entries(grouped).map(([groupKey, list]) => (
+                    <View key={groupKey} className="gap-2">
+                      <Text className="text-xs font-semibold text-neutral-700">
+                        {groupKey}
+                      </Text>
+
+                      <View className="gap-2">
+                        {list.map((s) => {
+                          const occupied = isSpaceOccupied(s.id);
+                          const isSelected = selectedSpaceId === s.id;
+
+                          return (
+                            <Pressable
+                              key={s.id}
+                              className={[
+                                'rounded-2xl px-4 py-3',
+                                isSelected
+                                  ? 'bg-black'
+                                  : occupied
+                                    ? 'bg-neutral-200'
+                                    : 'bg-neutral-100',
+                              ].join(' ')}
+                              onPress={() => selectSpace(s.id)}
+                            >
+                              <View className="flex-row items-center justify-between gap-3">
+                                <View className="flex-1">
+                                  <Text
+                                    className={[
+                                      'text-sm',
+                                      isSelected ? 'text-white' : 'text-neutral-900',
+                                    ].join(' ')}
+                                  >
+                                    {s.name}
+                                  </Text>
+                                  <Text
+                                    className={[
+                                      'text-xs mt-0.5',
+                                      isSelected
+                                        ? 'text-neutral-200'
+                                        : 'text-neutral-600',
+                                    ].join(' ')}
+                                  >
+                                    {s.type}
+                                    {occupied ? ' • Ocupado' : ''}
+                                  </Text>
+                                </View>
+
+                                {isSelected ? (
+                                  <View className="rounded-full bg-white/15 px-2 py-1">
+                                    <Text className="text-[10px] text-white">
+                                      Seleccionado
+                                    </Text>
+                                  </View>
+                                ) : null}
+                              </View>
+                            </Pressable>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              </Section>
+
+              <Button
+                variant="primary"
+                size="lg"
+                label="Crear reserva (mock)"
+                onPress={() => void createMockBooking(userId)}
+              />
+            </>
+          )}
+        </Content>
+      </ScrollView>
+    </Screen>
   );
 }

@@ -1,9 +1,20 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 
 import { useSpaceBuilderStore } from '@/features/space-builder';
 import type { WorkspaceConfig } from '@/features/spaces/domain/workspace.types';
+import {
+  AppHeader,
+  Button,
+  Card,
+  Content,
+  EmptyState,
+  ErrorState,
+  LoadingState,
+  Screen,
+  Section,
+} from '@/ui';
 
 function uid(prefix: string) {
   return `${prefix}-${Date.now()}`;
@@ -89,118 +100,116 @@ export default function SpaceBuilderAdminIndex() {
   };
 
   return (
-    <ScrollView contentContainerClassName="flex-grow px-6 py-6 gap-4">
-      <View className="flex-row items-center justify-between">
-        <Text className="text-base">Space Builder (Admin)</Text>
-        <Pressable
-          className="rounded-xl bg-neutral-200 px-4 py-2"
-          onPress={() => {
-            if (router.canGoBack()) router.back();
-            else router.replace('/(app)/reservas');
-          }}
-        >
-          <Text>Volver</Text>
-        </Pressable>
-      </View>
-      <Text className="text-sm">status: {status}</Text>
-      <Text className="text-sm">config: {config ? 'present' : 'missing'}</Text>
-      <Text className="text-sm">dirty: {isDirty ? 'yes' : 'no'}</Text>
-      {!config ? (
-        <View className="gap-2">
-          <Text className="text-sm">
-            No hay configuración. Genera una default y guárdala.
-          </Text>
+    <Screen>
+      <ScrollView contentContainerClassName="flex-grow px-6 py-6">
+        <Content className="gap-5">
+          <AppHeader
+            title="Space Builder"
+            subtitle={`Admin • ${isDirty ? 'Cambios sin guardar' : 'Sin cambios'}`}
+            onBack={() => {
+              if (router.canGoBack()) router.back();
+              else router.replace('/(app)/reservas');
+            }}
+            right={<Button size="sm" label="Recargar" onPress={() => void hydrate()} />}
+          />
 
-          <Pressable
-            className="rounded-xl bg-neutral-200 px-4 py-3"
-            onPress={seedDefault}
-          >
-            <Text className="text-center">Seed default config</Text>
-          </Pressable>
-
-          <Pressable
-            className={`rounded-xl px-4 py-3 ${status === 'ready' ? 'bg-black' : 'bg-neutral-300'}`}
-            disabled={status !== 'ready'}
-            onPress={() => void persist()}
-          >
-            <Text className="text-white text-center">Guardar</Text>
-          </Pressable>
-        </View>
-      ) : (
-        <>
-          <View className="rounded-xl bg-neutral-100 px-4 py-3">
-            <Text className="text-sm">Resumen</Text>
-            <Text className="text-xs text-neutral-600">version: {summary?.version}</Text>
-            <Text className="text-xs text-neutral-600">areas: {summary?.areas}</Text>
-            <Text className="text-xs text-neutral-600">
-              services: {summary?.services}
-            </Text>
-            <Text className="text-xs text-neutral-600">spaces: {summary?.spaces}</Text>
-          </View>
-
-          <View className="gap-2">
-            <Pressable className="rounded-xl bg-neutral-200 px-4 py-3" onPress={addArea}>
-              <Text className="text-center">+ Área</Text>
-            </Pressable>
-            <Pressable
-              className="rounded-xl bg-neutral-200 px-4 py-3"
-              onPress={addService}
-            >
-              <Text className="text-center">+ Servicio</Text>
-            </Pressable>
-            <Pressable className="rounded-xl bg-neutral-200 px-4 py-3" onPress={addSpace}>
-              <Text className="text-center">+ Espacio</Text>
-            </Pressable>
-
-            <Pressable
-              className={`rounded-xl px-4 py-3 ${isDirty ? 'bg-black' : 'bg-neutral-300'}`}
-              disabled={!isDirty}
-              onPress={() => void persist()}
-            >
-              <Text className="text-white text-center">Guardar cambios</Text>
-            </Pressable>
-
-            <Pressable
-              className="rounded-xl bg-neutral-200 px-4 py-3"
-              onPress={() => void hydrate()}
-            >
-              <Text className="text-center">Recargar desde storage</Text>
-            </Pressable>
-          </View>
-
-          <View className="gap-2">
-            <Text className="text-sm">Áreas</Text>
-            {config.areas.map((a) => (
-              <View key={a.id} className="rounded-xl bg-neutral-100 px-4 py-3">
-                <Text className="text-sm">{a.name}</Text>
-                <Text className="text-xs text-neutral-600">{a.id}</Text>
-              </View>
-            ))}
-          </View>
-
-          <View className="gap-2">
-            <Text className="text-sm">Servicios</Text>
-            {config.services.map((s) => (
-              <View key={s.id} className="rounded-xl bg-neutral-100 px-4 py-3">
-                <Text className="text-sm">{s.name}</Text>
-                <Text className="text-xs text-neutral-600">{s.id}</Text>
-              </View>
-            ))}
-          </View>
-
-          <View className="gap-2">
-            <Text className="text-sm">Espacios</Text>
-            {config.spaces.map((sp) => (
-              <View key={sp.id} className="rounded-xl bg-neutral-100 px-4 py-3">
-                <Text className="text-sm">{sp.name}</Text>
+          {status === 'idle' || status === 'loading' ? (
+            <LoadingState lines={4} />
+          ) : status === 'error' ? (
+            <ErrorState
+              title="No se pudo cargar la configuración"
+              onRetry={() => void hydrate()}
+            />
+          ) : !config ? (
+            <EmptyState
+              title="No hay configuración"
+              description="Genera una configuración default y guárdala para habilitar Reservas."
+              actionLabel="Seed default config"
+              onAction={seedDefault}
+            />
+          ) : (
+            <>
+              <Card className="gap-2">
+                <Text className="text-sm font-semibold text-neutral-900">Resumen</Text>
                 <Text className="text-xs text-neutral-600">
-                  {sp.type} • area: {sp.areaId} • services: {sp.serviceIds.length}
+                  version: {summary?.version}
                 </Text>
-              </View>
-            ))}
-          </View>
-        </>
-      )}
-    </ScrollView>
+                <Text className="text-xs text-neutral-600">areas: {summary?.areas}</Text>
+                <Text className="text-xs text-neutral-600">
+                  services: {summary?.services}
+                </Text>
+                <Text className="text-xs text-neutral-600">
+                  spaces: {summary?.spaces}
+                </Text>
+              </Card>
+
+              <Section
+                title="Acciones"
+                subtitle="Edita la config y guarda cambios"
+                right={
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    label="Guardar"
+                    disabled={!isDirty}
+                    onPress={() => void persist()}
+                  />
+                }
+              >
+                <View className="gap-2">
+                  <Button label="+ Área" onPress={addArea} />
+                  <Button label="+ Servicio" onPress={addService} />
+                  <Button label="+ Espacio" onPress={addSpace} />
+                </View>
+              </Section>
+
+              <Section title="Áreas" subtitle={`${config.areas.length}`}>
+                <View className="gap-2">
+                  {config.areas.map((a) => (
+                    <Card key={a.id} className="px-4 py-3">
+                      <Text className="text-sm text-neutral-900">{a.name}</Text>
+                      <Text className="text-xs text-neutral-600 mt-0.5">{a.id}</Text>
+                    </Card>
+                  ))}
+                </View>
+              </Section>
+
+              <Section title="Servicios" subtitle={`${config.services.length}`}>
+                <View className="gap-2">
+                  {config.services.map((s) => (
+                    <Card key={s.id} className="px-4 py-3">
+                      <Text className="text-sm text-neutral-900">{s.name}</Text>
+                      <Text className="text-xs text-neutral-600 mt-0.5">{s.id}</Text>
+                    </Card>
+                  ))}
+                </View>
+              </Section>
+
+              <Section title="Espacios" subtitle={`${config.spaces.length}`}>
+                <View className="gap-2">
+                  {config.spaces.map((sp) => (
+                    <Card key={sp.id} className="px-4 py-3">
+                      <Text className="text-sm text-neutral-900">{sp.name}</Text>
+                      <Text className="text-xs text-neutral-600 mt-0.5">
+                        {sp.type} • area: {sp.areaId} • services: {sp.serviceIds.length}
+                      </Text>
+                    </Card>
+                  ))}
+                </View>
+              </Section>
+            </>
+          )}
+
+          {!config && status === 'ready' ? (
+            <Button
+              variant="primary"
+              size="lg"
+              label="Guardar"
+              onPress={() => void persist()}
+            />
+          ) : null}
+        </Content>
+      </ScrollView>
+    </Screen>
   );
 }

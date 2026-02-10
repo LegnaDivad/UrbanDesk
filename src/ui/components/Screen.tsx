@@ -9,7 +9,10 @@ type ScreenProps = PropsWithChildren<
 
 export function Screen({ className, children, ...props }: ScreenProps) {
   return (
-    <SafeAreaView className={['flex-1', className].filter(Boolean).join(' ')} {...props}>
+    <SafeAreaView
+      className={['flex-1 bg-neutral-50', className].filter(Boolean).join(' ')}
+      {...props}
+    >
       {children}
     </SafeAreaView>
   );
