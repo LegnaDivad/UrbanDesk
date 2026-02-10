@@ -63,25 +63,19 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
 
   markRead: async (id) => {
     const { items } = get();
-    const now = new Date().toISOString();
-
     const updated = items.map((n) =>
-      n.id === id && !n.readAtISO ? { ...n, readAtISO: now } : n,
+      n.id === id && !n.readAtISO ? { ...n, readAtISO: new Date().toISOString() } : n,
     );
-
     await di.notifications.notificationsRepo.save(updated);
     set({ items: updated });
   },
 
   toggleRead: async (id) => {
     const { items } = get();
-    const now = new Date().toISOString();
-
     const updated = items.map((n) => {
       if (n.id !== id) return n;
-      return n.readAtISO ? { ...n, readAtISO: null } : { ...n, readAtISO: now };
+      return n.readAtISO ? { ...n, readAtISO: null } : { ...n, readAtISO: new Date().toISOString() };
     });
-
     await di.notifications.notificationsRepo.save(updated);
     set({ items: updated });
   },
