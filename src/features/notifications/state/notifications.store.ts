@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { di } from '@/di';
 import type {
   AppNotification,
+  NotificationMeta,
   NotificationPayload,
 } from '@/features/notifications/domain/notifications.types';
 
@@ -18,16 +19,15 @@ interface NotificationsState {
     title: string;
     body?: string;
     payload: NotificationPayload;
-    meta?: AppNotification['meta'];
+    meta?: NotificationMeta;
   }) => Promise<void>;
 
   markRead: (id: string) => Promise<void>;
-  markAllRead: () => Promise<void>;
-
   toggleRead: (id: string) => Promise<void>;
+  markAllRead: () => Promise<void>;
   remove: (id: string) => Promise<void>;
-
   clearAll: () => Promise<void>;
+
   unreadCount: () => number;
 }
 
@@ -53,7 +53,7 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
       createdAtISO: new Date().toISOString(),
       readAtISO: null,
       payload,
-      meta: meta ?? undefined,
+      meta,
     };
 
     const updated = [next, ...get().items];
@@ -62,10 +62,26 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
   },
 
   markRead: async (id) => {
+    const { items } = get();
     const now = new Date().toISOString();
-    const updated = get().items.map((n) =>
+
+    const updated = items.map((n) =>
       n.id === id && !n.readAtISO ? { ...n, readAtISO: now } : n,
     );
+
+    await di.notifications.notificationsRepo.save(updated);
+    set({ items: updated });
+  },
+
+  toggleRead: async (id) => {
+    const { items } = get();
+    const now = new Date().toISOString();
+
+    const updated = items.map((n) => {
+      if (n.id !== id) return n;
+      return n.readAtISO ? { ...n, readAtISO: null } : { ...n, readAtISO: now };
+    });
+
     await di.notifications.notificationsRepo.save(updated);
     set({ items: updated });
   },
@@ -73,16 +89,6 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
   markAllRead: async () => {
     const now = new Date().toISOString();
     const updated = get().items.map((n) => (n.readAtISO ? n : { ...n, readAtISO: now }));
-    await di.notifications.notificationsRepo.save(updated);
-    set({ items: updated });
-  },
-
-  toggleRead: async (id) => {
-    const now = new Date().toISOString();
-    const updated = get().items.map((n) => {
-      if (n.id !== id) return n;
-      return n.readAtISO ? { ...n, readAtISO: null } : { ...n, readAtISO: now };
-    });
     await di.notifications.notificationsRepo.save(updated);
     set({ items: updated });
   },

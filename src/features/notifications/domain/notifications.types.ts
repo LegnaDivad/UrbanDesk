@@ -12,16 +12,18 @@ export type NotificationPayload =
   | { kind: 'loan_returned'; loanId: string; assetId: string }
   | { kind: 'system' };
 
-export type NotificationAction = {
+export type NotificationActionKind = 'primary' | 'neutral' | 'danger';
+
+export interface NotificationAction {
   label: string;
   deepLink: string;
-  kind?: 'primary' | 'neutral' | 'danger';
-};
+  kind?: NotificationActionKind;
+}
 
-export type NotificationMeta = {
+export interface NotificationMeta {
   deepLink?: string;
   actions?: NotificationAction[];
-};
+}
 
 export interface AppNotification {
   id: string;

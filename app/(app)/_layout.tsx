@@ -19,7 +19,10 @@ export default function AppTabsLayout() {
         <Tabs.Screen name="inventory" options={{ title: 'Inventario' }} />
         <Tabs.Screen
           name="notifications"
-          options={{ title: 'Notificaciones', tabBarBadge: unread > 0 ? unread : undefined }}
+          options={{
+            title: 'Notificaciones',
+            tabBarBadge: unread > 0 ? unread : undefined,
+          }}
         />
       </Tabs>
     </SafeAreaView>

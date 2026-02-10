@@ -46,8 +46,7 @@ function buildReservasDeepLink(params?: {
 
 /**
  * Notificaciones v1.1
- * - "deep-links" y "acciones" se adjuntan en `meta` para que el UI las interprete
- *   sin acoplar el store de reservas a un contrato específico del feature notifications.
+ * Helper interno para errores y warnings que aún no migran a la estructura directa.
  */
 async function notifyV11(input: {
   kind: 'success' | 'warning' | 'error' | 'info';
@@ -179,23 +178,16 @@ export const useReservasStore = create<ReservasState>((set, get) => ({
     await di.reservas.bookingRepo.save(updated);
     set({ bookings: updated });
 
-    await notifyV11({
-      kind: 'warning',
+    // ACTUALIZADO: Notificación directa con deepLink + acciones
+    await useNotificationsStore.getState().push({
       title: 'Reserva cancelada',
-      message: `Se canceló la reserva ${bookingId}.`,
-      deepLink: buildReservasDeepLink({ bookingId, spaceId: target.spaceId }),
-      actions: [
-        {
-          label: 'Ver en Reservas',
-          deepLink: buildReservasDeepLink({ bookingId, spaceId: target.spaceId }),
-        },
-      ],
+      body: `Se canceló la reserva ${bookingId}.`,
+      payload: { kind: 'booking_cancelled', bookingId, spaceId: target.spaceId },
       meta: {
-        bookingId,
-        spaceId: target.spaceId,
-        userId: target.userId,
-        prevStatus: 'active',
-        nextStatus: 'cancelled',
+        deepLink: '/(app)/reservas',
+        actions: [
+          { label: 'Ver reservas', deepLink: '/(app)/reservas', kind: 'primary' },
+        ],
       },
     });
   },
@@ -259,27 +251,16 @@ export const useReservasStore = create<ReservasState>((set, get) => ({
     const spaceName =
       spaces.find((s) => s.id === selectedSpaceId)?.name ?? selectedSpaceId;
 
-    await notifyV11({
-      kind: 'success',
+    // ACTUALIZADO: Notificación directa con deepLink + acciones
+    await useNotificationsStore.getState().push({
       title: 'Reserva creada',
-      message: `${spaceName} reservado por ${durationMinutes} min.`,
-      deepLink: buildReservasDeepLink({ bookingId: next.id, spaceId: selectedSpaceId }),
-      actions: [
-        {
-          label: 'Abrir reserva',
-          deepLink: buildReservasDeepLink({
-            bookingId: next.id,
-            spaceId: selectedSpaceId,
-          }),
-        },
-      ],
+      body: `${spaceName} reservado por ${durationMinutes} min.`,
+      payload: { kind: 'booking_created', bookingId: next.id, spaceId: selectedSpaceId },
       meta: {
-        bookingId: next.id,
-        spaceId: selectedSpaceId,
-        userId,
-        startISO,
-        endISO,
-        durationMinutes,
+        deepLink: '/(app)/reservas',
+        actions: [
+          { label: 'Ver reservas', deepLink: '/(app)/reservas', kind: 'primary' },
+        ],
       },
     });
   },

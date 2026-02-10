@@ -1,13 +1,7 @@
-// src/features/inventory/state/inventory.store.ts
 import { create } from 'zustand';
 
 import { di } from '@/di';
-import type {
-  Asset,
-  AssetStatus,
-  Loan,
-  LoanStatus,
-} from '@/features/inventory/domain/inventory.types';
+import type { Asset, AssetStatus, Loan, LoanStatus } from '@/features/inventory/domain/inventory.types';
 import { useNotificationsStore } from '@/features/notifications';
 
 type LoadStatus = 'idle' | 'loading' | 'ready' | 'error';
@@ -89,10 +83,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
       },
     ];
 
-    await Promise.all([
-      di.inventory.inventoryRepo.saveAssets(seed),
-      di.inventory.inventoryRepo.saveLoans([]),
-    ]);
+    await Promise.all([di.inventory.inventoryRepo.saveAssets(seed), di.inventory.inventoryRepo.saveLoans([])]);
 
     set({ assets: seed, loans: [] });
   },
@@ -142,9 +133,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
       return;
     }
 
-    const alreadyActive = loans.some(
-      (l) => l.assetId === assetId && l.status === LOAN_ACTIVE,
-    );
+    const alreadyActive = loans.some((l) => l.assetId === assetId && l.status === LOAN_ACTIVE);
     if (alreadyActive || asset.status !== ASSET_AVAILABLE) {
       await useNotificationsStore.getState().push({
         title: 'No disponible',
@@ -167,9 +156,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
 
     const updatedLoans: Loan[] = [loan, ...loans];
 
-    const updatedAssets: Asset[] = assets.map((a) =>
-      a.id === assetId ? { ...a, status: ASSET_LOANED } : a,
-    );
+    const updatedAssets: Asset[] = assets.map((a) => (a.id === assetId ? { ...a, status: ASSET_LOANED } : a));
 
     await Promise.all([
       di.inventory.inventoryRepo.saveLoans(updatedLoans),
@@ -182,6 +169,13 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
       title: 'Préstamo creado',
       body: `Asset: ${assetId} • Usuario: ${userId}`,
       payload: { kind: 'loan_created', loanId: loan.id, assetId },
+      meta: {
+        deepLink: `/(app)/inventory/${assetId}`,
+        actions: [
+          { label: 'Ver asset', deepLink: `/(app)/inventory/${assetId}`, kind: 'primary' },
+          { label: 'Ir a inventario', deepLink: '/(app)/inventory', kind: 'neutral' },
+        ],
+      },
     });
   },
 
@@ -207,6 +201,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
       return;
     }
 
+    const assetId = loan.assetId;
     const ended = new Date().toISOString();
 
     const updatedLoans: Loan[] = loans.map((l) =>
@@ -214,7 +209,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     );
 
     const updatedAssets: Asset[] = assets.map((a) =>
-      a.id === loan.assetId ? { ...a, status: ASSET_AVAILABLE } : a,
+      a.id === assetId ? { ...a, status: ASSET_AVAILABLE } : a,
     );
 
     await Promise.all([
@@ -226,8 +221,15 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
 
     await useNotificationsStore.getState().push({
       title: 'Préstamo devuelto',
-      body: `Asset: ${loan.assetId}`,
-      payload: { kind: 'loan_returned', loanId, assetId: loan.assetId },
+      body: `Asset: ${assetId}`,
+      payload: { kind: 'loan_returned', loanId, assetId },
+      meta: {
+        deepLink: `/(app)/inventory/${assetId}`,
+        actions: [
+          { label: 'Ver asset', deepLink: `/(app)/inventory/${assetId}`, kind: 'primary' },
+          { label: 'Ir a inventario', deepLink: '/(app)/inventory', kind: 'neutral' },
+        ],
+      },
     });
   },
 }));
