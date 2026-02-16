@@ -74,7 +74,9 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
     const { items } = get();
     const updated = items.map((n) => {
       if (n.id !== id) return n;
-      return n.readAtISO ? { ...n, readAtISO: null } : { ...n, readAtISO: new Date().toISOString() };
+      return n.readAtISO
+        ? { ...n, readAtISO: null }
+        : { ...n, readAtISO: new Date().toISOString() };
     });
     await di.notifications.notificationsRepo.save(updated);
     set({ items: updated });

@@ -3,10 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { useNotificationsStore } from '@/features/notifications';
-import type {
-  AppNotification,
-  NotificationPayload,
-} from '@/features/notifications/domain/notifications.types';
+import type { AppNotification, NotificationPayload } from '@/features/notifications/domain/notifications.types';
 import {
   AppHeader,
   Button,
@@ -136,43 +133,18 @@ export default function NotificationsIndex() {
             }
           />
 
-          {/* Filters */}
           <View className="flex-row flex-wrap gap-2">
-            <Chip
-              label="Todas"
-              active={filter === 'all'}
-              onPress={() => setFilter('all')}
-            />
-            <Chip
-              label="Sin leer"
-              active={filter === 'unread'}
-              onPress={() => setFilter('unread')}
-            />
-            <Chip
-              label="Reservas"
-              active={filter === 'reservas'}
-              onPress={() => setFilter('reservas')}
-            />
-            <Chip
-              label="Inventario"
-              active={filter === 'inventory'}
-              onPress={() => setFilter('inventory')}
-            />
-            <Chip
-              label="Sistema"
-              active={filter === 'system'}
-              onPress={() => setFilter('system')}
-            />
+            <Chip label="Todas" active={filter === 'all'} onPress={() => setFilter('all')} />
+            <Chip label="Sin leer" active={filter === 'unread'} onPress={() => setFilter('unread')} />
+            <Chip label="Reservas" active={filter === 'reservas'} onPress={() => setFilter('reservas')} />
+            <Chip label="Inventario" active={filter === 'inventory'} onPress={() => setFilter('inventory')} />
+            <Chip label="Sistema" active={filter === 'system'} onPress={() => setFilter('system')} />
           </View>
 
-          {/* Body */}
           {status === 'loading' ? (
             <LoadingState lines={3} />
           ) : status === 'error' ? (
-            <ErrorState
-              title="No se pudieron cargar las notificaciones"
-              onRetry={() => void hydrate()}
-            />
+            <ErrorState title="No se pudieron cargar las notificaciones" onRetry={() => void hydrate()} />
           ) : filtered.length === 0 ? (
             <EmptyState
               title={
@@ -186,6 +158,7 @@ export default function NotificationsIndex() {
             <View className="gap-2">
               {filtered.map((n) => {
                 const isUnread = !n.readAtISO;
+
                 const deepLink = n.meta?.deepLink ?? null;
                 const actions = n.meta?.actions ?? [];
                 const fallback = fallbackRouteForPayload(n.payload);
@@ -200,20 +173,14 @@ export default function NotificationsIndex() {
                       <View className="flex-row items-start justify-between gap-3">
                         <View className="flex-1">
                           <View className="flex-row items-center gap-2">
-                            {isUnread ? (
-                              <View className="h-2 w-2 rounded-full bg-black" />
-                            ) : null}
-                            <Text
-                              className={`text-sm ${isUnread ? 'font-semibold' : ''}`}
-                            >
+                            {isUnread ? <View className="h-2 w-2 rounded-full bg-black" /> : null}
+                            <Text className={`text-sm ${isUnread ? 'font-semibold' : ''}`}>
                               {n.title}
                             </Text>
                           </View>
 
                           {n.body ? (
-                            <Text className="text-xs text-neutral-700 mt-1">
-                              {n.body}
-                            </Text>
+                            <Text className="text-xs text-neutral-700 mt-1">{n.body}</Text>
                           ) : null}
 
                           <View className="flex-row items-center gap-2 mt-2">
@@ -228,36 +195,28 @@ export default function NotificationsIndex() {
                             </Text>
 
                             {hasNav ? (
-                              <Text className="text-[10px] text-neutral-600">
-                                • abrir
-                              </Text>
+                              <Text className="text-[10px] text-neutral-600">• abrir</Text>
                             ) : null}
                           </View>
                         </View>
 
-                        {hasNav ? (
-                          <Text className="text-xs text-neutral-700">›</Text>
-                        ) : null}
+                        {hasNav ? <Text className="text-xs text-neutral-700">›</Text> : null}
                       </View>
                     </Pressable>
 
-                    {/* Quick actions (smoke-friendly) */}
                     <View className="flex-row flex-wrap gap-2 mt-3">
-                      {actions.map((a, idx) => {
-                        const variant = buttonVariantForMetaKind(a.kind as any);
-                        return (
-                          <Button
-                            key={`${n.id}-action-${idx}`}
-                            size="sm"
-                            variant={variant}
-                            label={a.label}
-                            onPress={() => {
-                              void markRead(n.id);
-                              router.push(a.deepLink as any);
-                            }}
-                          />
-                        );
-                      })}
+                      {actions.map((a, idx) => (
+                        <Button
+                          key={`${n.id}-action-${idx}`}
+                          size="sm"
+                          variant={buttonVariantForMetaKind(a.kind as any)}
+                          label={a.label}
+                          onPress={() => {
+                            void markRead(n.id);
+                            router.push(a.deepLink as any);
+                          }}
+                        />
+                      ))}
 
                       <Button
                         size="sm"
@@ -265,11 +224,7 @@ export default function NotificationsIndex() {
                         onPress={() => void toggleRead(n.id)}
                       />
 
-                      <Button
-                        size="sm"
-                        label="Eliminar"
-                        onPress={() => void remove(n.id)}
-                      />
+                      <Button size="sm" label="Eliminar" onPress={() => void remove(n.id)} />
                     </View>
                   </Card>
                 );
