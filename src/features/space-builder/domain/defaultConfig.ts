@@ -19,6 +19,7 @@ export function createDefaultWorkspaceConfig(): WorkspaceConfig {
         type: 'desk',
         areaId: 'area-1',
         serviceIds: ['svc-1'],
+        capacity: 1,
       },
       {
         id: 'desk-2',
@@ -26,6 +27,7 @@ export function createDefaultWorkspaceConfig(): WorkspaceConfig {
         type: 'desk',
         areaId: 'area-1',
         serviceIds: ['svc-1', 'svc-2'],
+        capacity: 1,
       },
       {
         id: 'room-1',
@@ -33,6 +35,7 @@ export function createDefaultWorkspaceConfig(): WorkspaceConfig {
         type: 'room',
         areaId: 'area-2',
         serviceIds: ['svc-1', 'svc-3'],
+        capacity: 1,
       },
       {
         id: 'common-1',
@@ -40,6 +43,7 @@ export function createDefaultWorkspaceConfig(): WorkspaceConfig {
         type: 'common',
         areaId: 'area-1',
         serviceIds: ['svc-1'],
+        capacity: 1,
       },
     ],
   };

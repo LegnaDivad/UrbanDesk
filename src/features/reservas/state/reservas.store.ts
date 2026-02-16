@@ -14,6 +14,7 @@ function spacesFromConfig(config: WorkspaceConfig | null): Space[] {
     name: s.name,
     type: s.type,
     areaId: s.areaId,
+    capacity: Math.max(1, s.capacity ?? 1),
   }));
 }
 
@@ -89,7 +90,10 @@ export interface ReservasState {
   cancelBooking: (bookingId: string) => Promise<void>;
   isSpaceOccupied: (spaceId: string) => boolean;
 
-  createMockBooking: (userId: string) => Promise<void>;
+  createMockBooking: (
+    userId: string,
+    input?: { startISO: string; endISO: string },
+  ) => Promise<void>;
 }
 
 export const useReservasStore = create<ReservasState>((set, get) => ({
@@ -193,13 +197,15 @@ export const useReservasStore = create<ReservasState>((set, get) => ({
   },
 
   isSpaceOccupied: (spaceId) => {
-    const { bookings, bookingStartISO, durationMinutes } = get();
+    const { bookings, bookingStartISO, durationMinutes, spaces } = get();
     const active = getActiveBookings(bookings);
     const endISO = addMinutes(bookingStartISO, durationMinutes);
-    return !canBook(spaceId, bookingStartISO, endISO, active);
+
+    const capacity = spaces.find((s) => s.id === spaceId)?.capacity ?? 1;
+    return !canBook(spaceId, bookingStartISO, endISO, active, capacity);
   },
 
-  createMockBooking: async (userId) => {
+  createMockBooking: async (userId, input) => {
     const { selectedSpaceId, bookings, bookingStartISO, durationMinutes, spaces } = get();
 
     if (!selectedSpaceId) {
@@ -215,10 +221,93 @@ export const useReservasStore = create<ReservasState>((set, get) => ({
 
     const active = getActiveBookings(bookings);
 
-    const startISO = bookingStartISO;
-    const endISO = addMinutes(startISO, durationMinutes);
+    const startISO = input?.startISO ?? bookingStartISO;
+    const endISO = input?.endISO ?? addMinutes(startISO, durationMinutes);
 
-    if (!canBook(selectedSpaceId, startISO, endISO, active)) {
+    const nowMs = Date.now();
+    const startMs = new Date(startISO).getTime();
+    const endMs = new Date(endISO).getTime();
+    if (!Number.isFinite(startMs)) {
+      await notifyV11({
+        kind: 'warning',
+        title: 'Hora inválida',
+        message: 'La hora de inicio no es válida.',
+        deepLink: buildReservasDeepLink({ spaceId: selectedSpaceId }),
+      });
+      return;
+    }
+
+    if (!Number.isFinite(endMs)) {
+      await notifyV11({
+        kind: 'warning',
+        title: 'Hora inválida',
+        message: 'La hora fin no es válida.',
+        deepLink: buildReservasDeepLink({ spaceId: selectedSpaceId }),
+        meta: { spaceId: selectedSpaceId, startISO, endISO },
+      });
+      return;
+    }
+
+    if (startMs < nowMs) {
+      await notifyV11({
+        kind: 'warning',
+        title: 'Hora objetivo inválida',
+        message: 'La hora de inicio no puede ser menor que la hora de creación.',
+        deepLink: buildReservasDeepLink({ spaceId: selectedSpaceId }),
+        meta: { spaceId: selectedSpaceId, startISO, endISO },
+      });
+      return;
+    }
+
+    const maxMs = nowMs + 8 * 60 * 60 * 1000;
+    if (startMs > maxMs) {
+      await notifyV11({
+        kind: 'warning',
+        title: 'Hora objetivo inválida',
+        message: 'La hora de inicio no puede ser mayor a 8 horas desde la creación.',
+        deepLink: buildReservasDeepLink({ spaceId: selectedSpaceId }),
+        meta: { spaceId: selectedSpaceId, startISO, endISO },
+      });
+      return;
+    }
+
+    if (endMs < startMs) {
+      await notifyV11({
+        kind: 'warning',
+        title: 'Hora objetivo inválida',
+        message: 'La hora fin no puede ser menor que la hora de inicio.',
+        deepLink: buildReservasDeepLink({ spaceId: selectedSpaceId }),
+        meta: { spaceId: selectedSpaceId, startISO, endISO },
+      });
+      return;
+    }
+
+    const maxEndMs = startMs + 8 * 60 * 60 * 1000;
+    if (endMs > maxEndMs) {
+      await notifyV11({
+        kind: 'warning',
+        title: 'Hora objetivo inválida',
+        message: 'La reserva no puede durar más de 8 horas.',
+        deepLink: buildReservasDeepLink({ spaceId: selectedSpaceId }),
+        meta: { spaceId: selectedSpaceId, startISO, endISO },
+      });
+      return;
+    }
+
+    if (endMs > maxMs) {
+      await notifyV11({
+        kind: 'warning',
+        title: 'Hora objetivo inválida',
+        message: 'La hora fin no puede ser mayor a 8 horas desde la creación.',
+        deepLink: buildReservasDeepLink({ spaceId: selectedSpaceId }),
+        meta: { spaceId: selectedSpaceId, startISO, endISO },
+      });
+      return;
+    }
+
+    const capacity = spaces.find((s) => s.id === selectedSpaceId)?.capacity ?? 1;
+
+    if (!canBook(selectedSpaceId, startISO, endISO, active, capacity)) {
       await notifyV11({
         kind: 'warning',
         title: 'Espacio ocupado',
@@ -251,10 +340,12 @@ export const useReservasStore = create<ReservasState>((set, get) => ({
     const spaceName =
       spaces.find((s) => s.id === selectedSpaceId)?.name ?? selectedSpaceId;
 
+    const computedDurationMinutes = Math.max(1, Math.round((endMs - startMs) / 60000));
+
     // ACTUALIZADO: Notificación directa con deepLink + acciones
     await useNotificationsStore.getState().push({
       title: 'Reserva creada',
-      body: `${spaceName} reservado por ${durationMinutes} min.`,
+      body: `${spaceName} reservado por ${computedDurationMinutes} min.`,
       payload: { kind: 'booking_created', bookingId: next.id, spaceId: selectedSpaceId },
       meta: {
         deepLink: '/(app)/reservas',

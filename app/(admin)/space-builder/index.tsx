@@ -1,4 +1,3 @@
-import { useRouter } from 'expo-router';
 import { useEffect, useMemo } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 
@@ -15,13 +14,14 @@ import {
   Screen,
   Section,
 } from '@/ui';
+import { useSafeBack } from '@/ui/navigation/useSafeBack';
 
 function uid(prefix: string) {
   return `${prefix}-${Date.now()}`;
 }
 
 export default function SpaceBuilderAdminIndex() {
-  const router = useRouter();
+  const safeBack = useSafeBack({ fallbackHref: '/(app)/reservas' });
 
   const status = useSpaceBuilderStore((s) => s.status);
   const config = useSpaceBuilderStore((s) => s.config);
@@ -92,6 +92,7 @@ export default function SpaceBuilderAdminIndex() {
           type: fallbackType,
           areaId,
           serviceIds: [],
+          capacity: 1,
         },
       ],
     };
@@ -106,10 +107,7 @@ export default function SpaceBuilderAdminIndex() {
           <AppHeader
             title="Space Builder"
             subtitle={`Admin • ${isDirty ? 'Cambios sin guardar' : 'Sin cambios'}`}
-            onBack={() => {
-              if (router.canGoBack()) router.back();
-              else router.replace('/(app)/reservas');
-            }}
+            onBack={safeBack}
             right={<Button size="sm" label="Recargar" onPress={() => void hydrate()} />}
           />
 
@@ -189,7 +187,47 @@ export default function SpaceBuilderAdminIndex() {
                 <View className="gap-2">
                   {config.spaces.map((sp) => (
                     <Card key={sp.id} className="px-4 py-3">
-                      <Text className="text-sm text-neutral-900">{sp.name}</Text>
+                      <View className="flex-row items-center justify-between gap-3">
+                        <Text className="text-sm text-neutral-900">{sp.name}</Text>
+
+                        <View className="flex-row items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            label="−"
+                            onPress={() => {
+                              const current = Math.max(1, sp.capacity ?? 1);
+                              const nextCapacity = Math.max(1, current - 1);
+                              const next: WorkspaceConfig = {
+                                ...config,
+                                spaces: config.spaces.map((x) =>
+                                  x.id === sp.id ? { ...x, capacity: nextCapacity } : x,
+                                ),
+                              };
+                              setConfig(next);
+                            }}
+                          />
+                          <Text className="text-xs text-neutral-600">
+                            cap: {Math.max(1, sp.capacity ?? 1)}
+                          </Text>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            label="+"
+                            onPress={() => {
+                              const current = Math.max(1, sp.capacity ?? 1);
+                              const nextCapacity = current + 1;
+                              const next: WorkspaceConfig = {
+                                ...config,
+                                spaces: config.spaces.map((x) =>
+                                  x.id === sp.id ? { ...x, capacity: nextCapacity } : x,
+                                ),
+                              };
+                              setConfig(next);
+                            }}
+                          />
+                        </View>
+                      </View>
                       <Text className="text-xs text-neutral-600 mt-0.5">
                         {sp.type} • area: {sp.areaId} • services: {sp.serviceIds.length}
                       </Text>

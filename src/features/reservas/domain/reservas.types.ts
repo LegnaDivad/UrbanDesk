@@ -5,8 +5,8 @@ export interface Space {
   name: string;
   type: SpaceType;
   areaId: string;
+  capacity: number;
 }
-
 
 export type BookingStatus = 'active' | 'cancelled';
 

@@ -1,9 +1,9 @@
-import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 
 import { useInventoryStore } from '@/features/inventory/state/inventory.store';
 import { AppHeader, Button, Card, Content, Screen } from '@/ui';
+import { useSafeBack } from '@/ui/navigation/useSafeBack';
 
 type Props = { assetId: string };
 
@@ -17,7 +17,7 @@ function fmt(iso: string | null) {
 }
 
 export function InventoryDetailScreen({ assetId }: Props) {
-  const router = useRouter();
+  const safeBack = useSafeBack({ fallbackHref: '/(app)/inventory' });
   const [userId] = useState('user-mock'); // TODO: reemplazar por session.userId cuando exista
 
   const status = useInventoryStore((s) => s.status);
@@ -45,10 +45,7 @@ export function InventoryDetailScreen({ assetId }: Props) {
     return [...list].sort((a, b) => (a.startISO < b.startISO ? 1 : -1));
   }, [assetId, getLoansForAsset]);
 
-  const onBack = () => {
-    if (router.canGoBack()) router.back();
-    else router.replace('/(app)/inventory');
-  };
+  const onBack = safeBack;
 
   if (!assetId) {
     return (
